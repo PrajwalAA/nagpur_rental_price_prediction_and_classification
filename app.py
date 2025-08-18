@@ -198,7 +198,7 @@ if rf_model is not None and scaler is not None and features is not None:
             st.warning(f"**The predicted rent is: Rs {predicted_rent:,.2f}**") # Since there's only one model, its prediction is the median.
 
         # --- Price Classification ---
-        FAIR_PRICE_TOLERANCE = 0.4
+        FAIR_PRICE_TOLERANCE = 0.51
         
         st.markdown("---")
         st.subheader("Price Comparison")

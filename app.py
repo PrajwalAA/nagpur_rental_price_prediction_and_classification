@@ -1,288 +1,253 @@
 import streamlit as st
 import pandas as pd
-import joblib # For loading the trained model and scaler
-import numpy as np # For numerical operations like np.expm1
+import numpy as np
+import joblib
 
-# Suppress warnings for cleaner output in Streamlit
-import warnings
-warnings.simplefilter('ignore')
+# --- Constants for features ---
+# These lists define the features used in your models for proper alignment.
+# Ensure these lists accurately reflect the features your models were trained on.
 
-# --- 1. Model and Scaler Loading ---
-# Ensure these files are in the same directory as your Streamlit app.py.
-# You will need to replace 'rent_model.pkl', 'rent_scaler.pkl', and 'rent_features.pkl'
-# with the actual names of your saved model, scaler, and feature list files.
-MODEL_PATH = 'rf_model.pkl'
-SCALER_PATH = 'scaler.pkl'
-FEATURES_PATH = 'model_features.pkl' # This file should contain the list of column names the model expects
-
-loaded_model = None
-loaded_scaler = None
-loaded_features = None
-
-try:
-    loaded_model = joblib.load(MODEL_PATH)
-    loaded_scaler = joblib.load(SCALER_PATH)
-    loaded_features = joblib.load(FEATURES_PATH)
-    st.success("Rent prediction model, scaler, and feature names loaded successfully!")
-except FileNotFoundError:
-    st.error(f"Error: One or more model files not found. Please ensure '{MODEL_PATH}', '{SCALER_PATH}', and '{FEATURES_PATH}' are in the correct directory.")
-    st.stop() # Stop the app if essential files are missing
-except Exception as e:
-    st.error(f"An error occurred while loading model files: {e}")
-    st.stop()
-
-# Define categorical features and numerical columns for scaling, consistent with training
-# These lists should match how they were defined and used in your training script.
-# Based on the user's provided 'predict_new_rent_from_input' function:
 CATEGORICAL_FEATURES = [
-    'Area', 'Zone', 'Furnishing Status', 'Recommended For', 'Water Supply'
+    'City', 'Area', 'Zone', 'Frurnishing_Status', 'Brokerage', 'Maintenance_Charge',
+    'Recomened for', 'Muncipla Water Or Bore Water', 'Type of Society', 'Room', 'Type'
 ]
-NUMERICAL_COLS_PRESENT = [
+
+NUMERICAL_FEATURES = [
     'Size_In_Sqft', 'Carpet_Area_Sqft', 'Bedrooms', 'Bathrooms', 'Balcony',
-    'Number_Of_Amenities', 'Floor_No', 'Total_floors_In_Building', #'Road_Connectivity',
-    'gym', #'gated_community',
-    'intercom', 'lift', #'pet_allowed',
-    'pool', 'security', 'wifi', 'gas_pipeline', 'sports_facility', 'kids_area',
-    'power_backup', 'Garden', #'Fire_Support',
-    'Parking', 'ATM_Near_me',
-    'Airport_Near_me', 'Bus_Stop__Near_me', 'Hospital_Near_me', 'Mall_Near_me',
-    'Market_Near_me', 'Metro_Station_Near_me', 'Park_Near_me', 'School_Near_me',
-    #'Property_Age'
+    'Number_Of_Amenities', 'Security_Deposite', 'Floor_No', 'Total_floors_In_Building',
+    'Road_Connectivity', 'gated_community', 'gym', 'intercom', 'lift', 'pet_allowed', 'pool',
+    'security', 'water_supply', 'wifi', 'gas_pipeline', 'sports_facility', 'kids_area',
+    'power_backup', 'Garden', 'Fire_Support', 'Parking', 'ATM_Near_me', 'Airport_Near_me',
+    'Bus_Stop__Near_me', 'Hospital_Near_me', 'Mall_Near_me', 'Market_Near_me',
+    'Metro_Station_Near_me', 'Park_Near_me', 'School_Near_me', 'Property_Age'
 ]
 
-# --- 2. Preprocessing Function for New Data ---
-def preprocess_new_data(input_data: dict, original_df_columns: list, scaler, categorical_features: list) -> pd.DataFrame:
-    """
-    Preprocesses new input data to match the format expected by the trained model.
-    This replicates the feature engineering steps from the training script, specifically for
-    one-hot encoding and column alignment.
-    """
-    # Create a DataFrame from the new input data
-    new_df = pd.DataFrame([input_data])
+# --- Load Model Resources with new file names ---
+@st.cache_resource
+def load_resources():
+    """Loads all model, scaler, and feature files with the specified names."""
+    try:
+        # Load Model 1 files
+        rf_model_1 = joblib.load('m.pkl')
+        scaler_1 = joblib.load('s.pkl')
+        features_1 = joblib.load('f.pkl')
+        st.success("Model 1 (m.pkl) and its resources loaded successfully.")
 
+        # Load Model 2 files
+        rf_model_2 = joblib.load('m2.pkl')
+        # Assuming scaler and features are the same files as model 1
+        scaler_2 = joblib.load('s.pkl')
+        features_2 = joblib.load('f2.pkl')
+        st.success("Model 2 (m2.pkl) and its resources loaded successfully.")
+
+        return rf_model_1, scaler_1, features_1, rf_model_2, scaler_2, features_2
+    except FileNotFoundError as e:
+        st.error(f"Error: A required file was not found. Please ensure 'm.pkl', 's.pkl', 'f.pkl', 'm2.pkl', and 'f2.pkl' are in the same directory.")
+        st.info(f"Details: {e}")
+        return None, None, None, None, None, None
+
+rf_model_1, scaler_1, features_1, rf_model_2, scaler_2, features_2 = load_resources()
+
+# --- Prediction Function for a single model ---
+def predict_rent_with_model(model, scaler, original_df_columns, data_dict):
+    """
+    Makes a prediction using a specific model and its associated resources.
+    Handles data preprocessing (one-hot encoding, column alignment, scaling).
+    """
+    if model is None or scaler is None or original_df_columns is None:
+        return None
+
+    # Create a DataFrame from the new data dictionary
+    new_df = pd.DataFrame([data_dict])
+    
     # Apply one-hot encoding
-    for feature in categorical_features:
+    for feature in CATEGORICAL_FEATURES:
         if feature in new_df.columns:
-            # Using get_dummies with drop_first=True to avoid multicollinearity
-            new_df = pd.get_dummies(new_df, columns=[feature], drop_first=True)
+            # Create a temporary DataFrame for one-hot encoding
+            temp_df = pd.get_dummies(new_df[[feature]], prefix=feature)
+            
+            # Drop the original categorical column from new_df and join the one-hot encoded columns
+            new_df = new_df.drop(columns=[feature])
+            new_df = pd.concat([new_df.reset_index(drop=True), temp_df.reset_index(drop=True)], axis=1)
 
-    # Align columns with the training data (CRITICAL for consistent input to model)
-    # Add missing columns with 0, and drop extra columns that weren't in training data
+    # Align columns with the training data (important for one-hot encoding)
     missing_cols = set(original_df_columns) - set(new_df.columns)
     for c in missing_cols:
         new_df[c] = 0
-    # Ensure the order of columns is exactly the same as during training
-    new_df = new_df[original_df_columns]
+    new_df = new_df[original_df_columns] # Ensure order is the same
 
-    # Scale numerical features - this step should happen AFTER column alignment
-    # because the scaler was fitted on data that already had the correct columns.
-    # We only transform the numerical columns, which are now correctly aligned.
-    new_df[NUMERICAL_COLS_PRESENT] = scaler.transform(new_df[NUMERICAL_COLS_PRESENT])
+    # Scale numerical features
+    numerical_cols_for_current_model = [col for col in NUMERICAL_FEATURES if col in original_df_columns]
+    
+    if not new_df[numerical_cols_for_current_model].empty:
+        new_df[numerical_cols_for_current_model] = scaler.transform(new_df[numerical_cols_for_current_model])
 
-    return new_df
+    # Make prediction
+    try:
+        log_predicted_rent = model.predict(new_df)[0]
+        predicted_rent = np.expm1(log_predicted_rent) # Inverse transform
+        return predicted_rent
+    except Exception as e:
+        st.error(f"Prediction failed for model. Error: {e}")
+        return None
 
-# --- 3. Streamlit Application Layout ---
-st.set_page_config(
-    page_title="House Rent Predictor",
-    page_icon="🏠",
-    layout="wide", # Use wide layout for more space
-    initial_sidebar_state="auto"
-)
+# --- Streamlit UI ---
+st.title("Rental Price Prediction App (Dual Model)")
+st.markdown("Enter the details of the property to predict its fair rental price using two different models.")
 
-st.title("🏠 House Rent Prediction")
-st.markdown("Enter the details of a house to get an estimated monthly rent.")
+if (rf_model_1 is not None and scaler_1 is not None and features_1 is not None) and \
+   (rf_model_2 is not None and scaler_2 is not None and features_2 is not None):
+    
+    col1, col2 = st.columns(2)
 
-st.subheader("Property Details")
+    with col1:
+        st.header("Property Details")
+        size = st.number_input("Size In Sqft", min_value=100, max_value=20000, value=1000, key='size')
+        carpet_area = st.number_input("Carpet Area Sqft", min_value=100, max_value=20000, value=1000, key='carpet_area')
+        bedrooms = st.number_input("Number of Bedrooms", min_value=1, max_value=10, value=2, key='bedrooms')
+        bathrooms = st.number_input("Number of Bathrooms", min_value=1, max_value=10, value=2, key='bathrooms')
+        balcony = st.number_input("Number of Balconies", min_value=0, max_value=10, value=1, key='balcony')
+        total_floors = st.number_input("Total Floors In Building", min_value=1, max_value=50, value=4, key='total_floors')
+        floor_no = st.number_input("Floor No", min_value=0, max_value=total_floors, value=1, key='floor_no')
+        property_age = st.number_input("Property Age (in years)", min_value=0, max_value=100, value=5, key='property_age')
+        amenities_count = st.number_input("Number of Amenities", min_value=0, max_value=30, value=5, key='amenities_count')
+        security_deposite = st.number_input("Security Deposite", min_value=0, value=20000, key='security_deposite')
+        road_connectivity = st.slider("Road Connectivity (1-10)", min_value=1, max_value=10, value=5, key='road_connectivity')
+        
+    with col2:
+        st.header("Categorical & Binary Features")
+        
+        area_options = ['Hingna', 'Trimurti Nagar', 'Ashirwad Nagar', 'Beltarodi', 'Besa', 'Bharatwada', 'Boriyapura', 'Chandrakiran Nagar', 'Dabha', 'Dhantoli', 'Dharampeth', 'Dighori', 'Duttawadi', 'Gandhibagh', 'Ganeshpeth', 'Godhni', 'Gotal Panjri', 'Hudkeswar', 'Itwari', 'Jaitala', 'Jaripatka', 'Kalamna', 'Kalmeshwar', 'Khamla', 'Kharbi', 'Koradi Colony', 'Kotewada', 'Mahal', 'Manewada', 'Manish Nagar', 'Mankapur', 'Medical Square', 'MIHAN', 'Nandanwan', 'Narendra Nagar Extension', 'Nari Village', 'Narsala', 'Omkar Nagar', 'Parvati Nagar', 'Pratap Nagar', 'Ram Nagar', 'Rameshwari', 'Reshim Bagh', 'Sadar', 'Sanmarga Nagar', 'Seminary Hills', 'Shatabdi Square', 'Sitabuldi', 'Somalwada', 'Sonegaon', 'Teka Naka', 'Vayusena Nagar', 'Wanadongri', 'Wardsman Nagar', 'Wathoda', 'Zingabai Takli']
+        area = st.selectbox("Select Area:", area_options, key='area')
+        
+        zone_options = ['East Zone', 'North Zone', 'South Zone', 'West Zone', 'Rural']
+        zone = st.selectbox("Select Zone:", zone_options, key='zone')
+        
+        furnishing_status_options = ['Fully Furnished', 'Semi Furnished', 'Unfurnished']
+        furnishing_status = st.selectbox("Select Furnishing Status:", furnishing_status_options, key='furnishing_status')
+        
+        recommended_for_options = ['Anyone', 'Bachelors', 'Family', 'Family and Bachelors', 'Family and Company']
+        recommended_for = st.selectbox("Recommended For:", recommended_for_options, key='recommended_for')
+        
+        water_supply_options_categorical = ['Borewell', 'Both', 'Municipal']
+        municipal_bore_water = st.selectbox("Municipal Water Or Bore Water:", water_supply_options_categorical, key='municipal_bore_water')
 
-# Input widgets organized into columns for better layout
-col1, col2, col3 = st.columns(3)
+        type_of_society_options = ['Gated','Non-Gated','Township']
+        type_of_society = st.selectbox("Type of Society:", type_of_society_options, key='type_of_society')
 
-with col1:
-    st.markdown("##### Basic Property Information")
-    size_sqft = st.number_input("Size (in Sqft)", min_value=100, max_value=50000, value=1000, step=50)
-    carpet_area_sqft = st.number_input("Carpet Area (in Sqft)", min_value=50, max_value=40000, value=800, step=50)
-    bedrooms = st.number_input("Bedrooms", min_value=1, max_value=10, value=2, step=1)
-    bathrooms = st.number_input("Bathrooms", min_value=1, max_value=10, value=2, step=1)
-    balcony = st.number_input("Balcony", min_value=0, max_value=5, value=1, step=1)
-    property_age = st.number_input("Property Age (years)", min_value=0, max_value=100, value=5, step=1)
+        room_options = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK']
+        room_type = st.selectbox("Room Type:", room_options, key='room_type')
 
-with col2:
-    st.markdown("##### Location & Structure")
-    floor_no = st.number_input("Floor Number", min_value=0, max_value=50, value=1, step=1)
-    total_floors_building = st.number_input("Total Floors in Building", min_value=1, max_value=100, value=5, step=1)
-    #road_connectivity = st.number_input("Road Connectivity (0-10)", min_value=0, max_value=10, value=7, step=1)
-    number_of_amenities = st.number_input("Number of Amenities", min_value=0, max_value=30, value=5, step=1)
+        property_type_options = ['Flat','Studio Apartment','Independent House','Independent Builder Floor','Villa','Duplex']
+        property_type = st.selectbox("Property Type:", property_type_options, key='property_type')
 
-    # Categorical Inputs
-    area_options = [
-        'Hingna', 'Trimurti Nagar', 'Ashirwad Nagar', 'Beltarodi', 'Besa',
-        'Bharatwada', 'Boriyapura', 'Chandrakiran Nagar', 'Dabha', 'Dhantoli',
-        'Dharampeth', 'Dighori', 'Duttawadi', 'Gandhibagh', 'Ganeshpeth',
-        'Godhni', 'Godhni', 'Gotal Panjri', 'Hingna', 'Hudkeswar', 'Itwari',
-        'Jaitala', 'Jaripatka', 'Kalamna', 'Kalmeshwar', 'Khamla', 'Kharbi',
-        'Koradi Colony', 'Kotewada', 'Mahal', 'Manewada', 'Manish Nagar',
-        'Mankapur', 'Medical Square', 'MIHAN', 'Nandanwan',
-        'Narendra Nagar Extension', 'Nari Village', 'Narsala', 'Omkar Nagar',
-        'Parvati Nagar', 'Pratap Nagar', 'Ram Nagar', 'Rameshwari',
-        'Reshim Bagh', 'Sadar', 'Sanmarga Nagar', 'Seminary Hills',
-        'Shatabdi Square', 'Shatabdi Square', 'Sitabuldi', 'Somalwada',
-        'Sonegaon', 'Teka Naka', 'Vayusena Nagar', 'Wanadongri',
-        'Wardsman Nagar', 'Wathoda', 'Zingabai Takli'
-    ]
-    area = st.selectbox("Area", area_options)
+        brokerage_options = ['No Brokerage', 'With Brokerage']
+        brokerage = st.selectbox("Brokerage:", brokerage_options, key='brokerage')
 
-    zone_options = ['East Zone', 'North Zone', 'South Zone', 'West Zone', 'Rural']
-    zone = st.selectbox("Zone", zone_options)
+        maintenance_charge_options = ['Maintenance Not Included', 'Maintenance Included']
+        maintenance_charge = st.selectbox("Maintenance Charge:", maintenance_charge_options, key='maintenance_charge')
 
-with col3:
-    st.markdown("##### Features & Preferences")
-    furnishing_status_options = ['Fully Furnished', 'Semi Furnished', 'Unfurnished']
-    furnishing_status = st.selectbox("Furnishing Status", furnishing_status_options)
 
-    recommended_for_options = ['Anyone', 'Bachelors', 'Family', 'Family and Bachelors', 'Family and Company']
-    recommended_for = st.selectbox("Recommended For", recommended_for_options)
+        st.subheader("Amenities & Proximity (Check if available)")
+        gym = st.checkbox("Gym", key='gym')
+        gated_community = st.checkbox("Gated Community", key='gated_community')
+        intercom = st.checkbox("Intercom", key='intercom')
+        lift = st.checkbox("Lift", key='lift')
+        pet_allowed = st.checkbox("Pet Allowed", key='pet_allowed')
+        pool = st.checkbox("Pool", key='pool')
+        security = st.checkbox("Security", key='security')
+        water_supply_amenity = st.checkbox("Water Supply (as amenity)", help="Check if this specific water supply amenity is available", key='water_supply_amenity')
+        wifi = st.checkbox("WiFi", key='wifi')
+        gas_pipeline = st.checkbox("Gas Pipeline", key='gas_pipeline')
+        sports_facility = st.checkbox("Sports Facility", key='sports_facility')
+        kids_area = st.checkbox("Kids Area", key='kids_area')
+        power_backup = st.checkbox("Power Backup", key='power_backup')
+        garden = st.checkbox("Garden", key='garden')
+        fire_support = st.checkbox("Fire Support", key='fire_support')
+        parking = st.checkbox("Parking", key='parking')
+        atm_near_me = st.checkbox("ATM Near Me", key='atm_near_me')
+        airport_near_me = st.checkbox("Airport Near Me", key='airport_near_me')
+        bus_stop_near_me = st.checkbox("Bus Stop Near Me", key='bus_stop_near_me')
+        hospital_near_me = st.checkbox("Hospital Near Me", key='hospital_near_me')
+        mall_near_me = st.checkbox("Mall Near Me", key='mall_near_me')
+        market_near_me = st.checkbox("Market Near Me", key='market_near_me')
+        metro_station_near_me = st.checkbox("Metro Station Near Me", key='metro_station_near_me')
+        park_near_me = st.checkbox("Park Near Me", key='park_near_me')
+        school_near_me = st.checkbox("School Near Me", key='school_near_me')
 
-    water_supply_options = ['Borewell', 'Both', 'Municipal']
-    water_supply = st.selectbox("Water Supply", water_supply_options)
-
-    st.markdown("##### Amenities (0 = No, 1 = Yes)")
-    gym = st.radio("Gym", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='gym')
-   # gated_community = st.radio("Gated Community", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='gated_community')
-    intercom = st.radio("Intercom", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='intercom')
-    lift = st.radio("Lift", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='lift')
-    # pet_allowed = st.radio("Pet Allowed", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='pet_allowed')
-    pool = st.radio("Pool", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='pool')
-    security = st.radio("Security", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='security')
-    wifi = st.radio("Wifi", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='wifi')
-    gas_pipeline = st.radio("Gas Pipeline", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='gas_pipeline')
-    sports_facility = st.radio("Sports Facility", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='sports_facility')
-    kids_area = st.radio("Kids Area", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='kids_area')
-    power_backup = st.radio("Power Backup", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='power_backup')
-    garden = st.radio("Garden", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='garden')
-    #fire_support = st.radio("Fire Support", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='fire_support')
-    parking = st.radio("Parking", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='parking')
-    atm_near_me = st.radio("ATM Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='atm_near_me')
-    airport_near_me = st.radio("Airport Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='airport_near_me')
-    bus_stop_near_me = st.radio("Bus Stop Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='bus_stop_near_me')
-    hospital_near_me = st.radio("Hospital Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='hospital_near_me')
-    mall_near_me = st.radio("Mall Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='mall_near_me')
-    market_near_me = st.radio("Market Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='market_near_me')
-    metro_station_near_me = st.radio("Metro Station Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='metro_station_near_me')
-    park_near_me = st.radio("Park Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='park_near_me')
-    school_near_me = st.radio("School Near Me", options=[0, 1], format_func=lambda x: "Yes" if x == 1 else "No", key='school_near_me')
-
-# Button to trigger prediction
-if st.button("Predict Rent"):
-    if loaded_model and loaded_scaler and loaded_features:
-        input_data = {
-            'Size_In_Sqft': size_sqft,
-            'Carpet_Area_Sqft': carpet_area_sqft,
-            'Bedrooms': bedrooms,
-            'Bathrooms': bathrooms,
-            'Balcony': balcony,
-            'Number_Of_Amenities': number_of_amenities,
-            'Floor_No': floor_no,
-            'Total_floors_In_Building': total_floors_building,
-            #'Road_Connectivity': road_connectivity,
-            'gym': gym,
-            #'gated_community': gated_community,
-            'intercom': intercom,
-            'lift': lift,
-            #'pet_allowed': pet_allowed,
-            'pool': pool,
-            'security': security,
-            'wifi': wifi,
-            'gas_pipeline': gas_pipeline,
-            'sports_facility': sports_facility,
-            'kids_area': kids_area,
-            'power_backup': power_backup,
-            'Garden': garden,
-            #'Fire_Support': fire_support,
-            'Parking': parking,
-            'ATM_Near_me': atm_near_me,
-            'Airport_Near_me': airport_near_me,
-            'Bus_Stop__Near_me': bus_stop_near_me,
-            'Hospital_Near_me': hospital_near_me,
-            'Mall_Near_me': mall_near_me,
-            'Market_Near_me': market_near_me,
-            'Metro_Station_Near_me': metro_station_near_me,
-            'Park_Near_me': park_near_me,
-            'School_Near_me': school_near_me,
-            #'Property_Age': property_age,
-            'Area': area,
-            'Zone': zone,
-            'Furnishing Status': furnishing_status,
-            'Recommended For': recommended_for,
-            'Water Supply': water_supply
+    # When the user clicks the predict button
+    if st.button("Predict Rent"):
+        user_input_data = {
+            'Size_In_Sqft': size, 'Carpet_Area_Sqft': carpet_area, 'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
+            'Balcony': balcony, 'Number_Of_Amenities': amenities_count, 'Security_Deposite': security_deposite,
+            'Floor_No': floor_no, 'Total_floors_In_Building': total_floors, 'Road_Connectivity': road_connectivity,
+            'gym': 1 if gym else 0, 'gated_community': 1 if gated_community else 0, 'intercom': 1 if intercom else 0,
+            'lift': 1 if lift else 0, 'pet_allowed': 1 if pet_allowed else 0, 'pool': 1 if pool else 0,
+            'security': 1 if security else 0, 'water_supply': 1 if water_supply_amenity else 0, 'wifi': 1 if wifi else 0,
+            'gas_pipeline': 1 if gas_pipeline else 0, 'sports_facility': 1 if sports_facility else 0, 'kids_area': 1 if kids_area else 0,
+            'power_backup': 1 if power_backup else 0, 'Garden': 1 if garden else 0, 'Fire_Support': 1 if fire_support else 0,
+            'Parking': 1 if parking else 0, 'ATM_Near_me': 1 if atm_near_me else 0, 'Airport_Near_me': 1 if airport_near_me else 0,
+            'Bus_Stop__Near_me': 1 if bus_stop_near_me else 0, 'Hospital_Near_me': 1 if hospital_near_me else 0,
+            'Mall_Near_me': 1 if mall_near_me else 0, 'Market_Near_me': 1 if market_near_me else 0,
+            'Metro_Station_Near_me': 1 if metro_station_near_me else 0, 'Park_Near_me': 1 if park_near_me else 0,
+            'School_Near_me': 1 if school_near_me else 0, 'Property_Age': property_age,
+            'City': 'Nagpur', 'Area': area, 'Zone': zone, 'Frurnishing_Status': furnishing_status,
+            'Recomened for': recommended_for, 'Muncipla Water Or Bore Water': municipal_bore_water,
+            'Type of Society': type_of_society, 'Room': room_type, 'Type': property_type,
+            'Brokerage': brokerage, 'Maintenance_Charge': maintenance_charge
         }
 
-        try:
-            # Preprocess the input data
-            processed_input = preprocess_new_data(
-                input_data,
-                loaded_features, # Use the feature names saved during training
-                loaded_scaler,
-                CATEGORICAL_FEATURES
-            )
+        st.markdown("---")
+        st.subheader("Prediction Results")
 
-            # Make prediction
-            log_predicted_rent = loaded_model.predict(processed_input)[0]
-            predicted_rent = np.expm1(log_predicted_rent) # Inverse transform log rent
+        predictions = []
 
-            st.subheader("Prediction Result:")
-            st.success(f"Estimated Monthly Rent: **₹{predicted_rent:,.2f}**") # Using INR symbol
+        # Predict with Model 1
+        predicted_rent_1 = predict_rent_with_model(rf_model_1, scaler_1, features_1, user_input_data)
+        if predicted_rent_1 is not None:
+            st.success(f"Model 1 Predicted Rent: **Rs {predicted_rent_1:,.2f}**")
+            predictions.append(predicted_rent_1)
 
-            # --- Price Classification ---
-            st.markdown("---")
-            st.subheader("Price Comparison")
-            st.markdown("Enter a listed price to see if the property is underpriced, overpriced, or fairly priced based on our prediction.")
+        # Predict with Model 2
+        predicted_rent_2 = predict_rent_with_model(rf_model_2, scaler_2, features_2, user_input_data)
+        if predicted_rent_2 is not None:
+            st.info(f"Model 2 Predicted Rent: **Rs {predicted_rent_2:,.2f}**")
+            predictions.append(predicted_rent_2)
+        
+        # Calculate and display Median if both predictions are available
+        if len(predictions) == 2:
+            median_predicted_rent = np.median(predictions)
+            st.warning(f"**Median Predicted Rent (from both models): Rs {median_predicted_rent:,.2f}**")
 
-            listed_price = st.number_input("Enter Listed Price (₹)", min_value=0, value=int(predicted_rent * 1.05), step=100, key='listed_price_input')
+        # --- Price Classification ---
+        FAIR_PRICE_TOLERANCE = 0.07
+        
+        st.markdown("---")
+        st.subheader("Price Comparison")
+        listed_price = st.number_input("Enter the listed price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
 
-            FAIR_PRICE_TOLERANCE = 0.10 # 10% tolerance
-
-            lower_bound = predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
-            upper_bound = predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
-
-            st.info(f"A fair price for this property would typically be between **₹{lower_bound:,.2f}** and **₹{upper_bound:,.2f}**.")
-
-            if listed_price < lower_bound:
-                st.warning(f"**₹{listed_price:,.2f}**  This property appears to be **Underpriced**! Great deal!")
-            elif listed_price > upper_bound:
-                st.error(f"**₹{listed_price:,.2f}**  This property appears to be **Overpriced**! Consider negotiating.")
+        if predicted_rent_1 is not None:
+            st.markdown(f"**Comparison based on Model 1's Prediction (Rs {predicted_rent_1:,.2f}):**")
+            lower_bound_1 = predicted_rent_1 * (1 - FAIR_PRICE_TOLERANCE)
+            upper_bound_1 = predicted_rent_1 * (1 + FAIR_PRICE_TOLERANCE)
+            st.text(f"Fair range: Rs {lower_bound_1:,.2f} - Rs {upper_bound_1:,.2f}")
+            if listed_price < lower_bound_1:
+                st.warning("Model 1 suggests this property appears to be **Underpriced**!")
+            elif listed_price > upper_bound_1:
+                st.warning("Model 1 suggests this property appears to be **Overpriced**!")
             else:
-                st.success(f"**₹{listed_price:,.2f}**  This property appears to be **Fairly Priced**.")
-
-        except Exception as e:
-            st.error(f"An error occurred during prediction: {e}")
-            st.warning("Please check your input values and ensure the model files are correct.")
-    else:
-        st.warning("Model not loaded. Please check the file paths and restart the app.")
-
-# --- How to Run Instructions ---
-st.markdown(
-    """
-    ---
-    ### How to Run This Application:
-    1.  **Save** the code above as a Python file (e.g., `rent_prediction_app.py`).
-    2.  **Ensure** you have trained your rent prediction model and saved the following files:
-        * `rent_model.pkl` (your trained model)
-        * `rent_scaler.pkl` (your fitted scaler, e.g., StandardScaler)
-        * `rent_features.pkl` (a list of feature names in the exact order your model expects, saved during training, e.g., `joblib.dump(X_train.columns.tolist(), 'rent_features.pkl')`)
-    3.  **Place** these three `.pkl` files in the **same directory** as `rent_prediction_app.py`.
-    4.  **Install** the necessary libraries:
-        ```bash
-        pip install streamlit numpy pandas scikit-learn joblib
-        ```
-    5.  **Run** the app from your terminal:
-        ```bash
-        streamlit run rent_prediction_app.py
-        ```
-    6.  Your browser will automatically open to the Streamlit app!
-    """
-)
-
-
-
-
-
+                st.success("Model 1 suggests this property appears to be **Fairly Priced**.")
+        
+        if predicted_rent_2 is not None:
+            st.markdown(f"**Comparison based on Model 2's Prediction (Rs {predicted_rent_2:,.2f}):**")
+            lower_bound_2 = predicted_rent_2 * (1 - FAIR_PRICE_TOLERANCE)
+            upper_bound_2 = predicted_rent_2 * (1 + FAIR_PRICE_TOLERANCE)
+            st.text(f"Fair range: Rs {lower_bound_2:,.2f} - Rs {upper_bound_2:,.2f}")
+            if listed_price < lower_bound_2:
+                st.warning("Model 2 suggests this property appears to be **Underpriced**!")
+            elif listed_price > upper_bound_2:
+                st.warning("Model 2 suggests this property appears to be **Overpriced**!")
+            else:
+                st.success("Model 2 suggests this property appears to be **Fairly Priced**.")
+else:
+    st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', 'f.pkl', 'm2.pkl', and 'f2.pkl') are available in the same directory.")

@@ -4,8 +4,8 @@ import numpy as np
 import joblib
 
 # --- Constants for features ---
-# These lists define the features used in your models for proper alignment.
-# Ensure these lists accurately reflect the features your models were trained on.
+# These lists define the features used in your model for proper alignment.
+# Ensure these lists accurately reflect the features your model was trained on.
 
 CATEGORICAL_FEATURES = [
     'City', 'Area', 'Zone', 'Frurnishing_Status', 'Brokerage', 'Maintenance_Charge',
@@ -22,36 +22,28 @@ NUMERICAL_FEATURES = [
     'Metro_Station_Near_me', 'Park_Near_me', 'School_Near_me', 'Property_Age'
 ]
 
-# --- Load Model Resources with new file names ---
+# --- Load Model Resources ---
 @st.cache_resource
 def load_resources():
-    """Loads all model, scaler, and feature files with the specified names."""
+    """Loads the model, scaler, and feature file."""
     try:
         # Load Model 1 files
-        rf_model_1 = joblib.load('m.pkl')
-        scaler_1 = joblib.load('s.pkl')
-        features_1 = joblib.load('f.pkl')
-        st.success("Model 1 (m.pkl) and its resources loaded successfully.")
-
-        # Load Model 2 files
-        rf_model_2 = joblib.load('m2.pkl')
-        # Assuming scaler and features are the same files as model 1
-        scaler_2 = joblib.load('s2.pkl')
-        features_2 = joblib.load('f2.pkl')
-        st.success("Model 2 (m2.pkl) and its resources loaded successfully.")
-
-        return rf_model_1, scaler_1, features_1, rf_model_2, scaler_2, features_2
+        rf_model = joblib.load('m.pkl')
+        scaler = joblib.load('s.pkl')
+        features = joblib.load('f.pkl')
+        st.success("Model (m.pkl) and its resources loaded successfully.")
+        return rf_model, scaler, features
     except FileNotFoundError as e:
-        st.error(f"Error: A required file was not found. Please ensure 'm.pkl', 's.pkl', 'f.pkl', 'm2.pkl', and 'f2.pkl' are in the same directory.")
+        st.error(f"Error: A required file was not found. Please ensure 'm.pkl', 's.pkl', and 'f.pkl' are in the same directory.")
         st.info(f"Details: {e}")
-        return None, None, None, None, None, None
+        return None, None, None
 
-rf_model_1, scaler_1, features_1, rf_model_2, scaler_2, features_2 = load_resources()
+rf_model, scaler, features = load_resources()
 
-# --- Prediction Function for a single model ---
+# --- Prediction Function ---
 def predict_rent_with_model(model, scaler, original_df_columns, data_dict):
     """
-    Makes a prediction using a specific model and its associated resources.
+    Makes a prediction using the model and its associated resources.
     Handles data preprocessing (one-hot encoding, column alignment, scaling).
     """
     if model is None or scaler is None or original_df_columns is None:
@@ -92,11 +84,10 @@ def predict_rent_with_model(model, scaler, original_df_columns, data_dict):
         return None
 
 # --- Streamlit UI ---
-st.title("Rental Price Prediction App (Dual Model)")
-st.markdown("Enter the details of the property to predict its fair rental price using two different models.")
+st.title("Rental Price Prediction App")
+st.markdown("Enter the details of the property to predict its fair rental price.")
 
-if (rf_model_1 is not None and scaler_1 is not None and features_1 is not None) and \
-   (rf_model_2 is not None and scaler_2 is not None and features_2 is not None):
+if rf_model is not None and scaler is not None and features is not None:
     
     col1, col2 = st.columns(2)
 
@@ -200,24 +191,11 @@ if (rf_model_1 is not None and scaler_1 is not None and features_1 is not None) 
         st.markdown("---")
         st.subheader("Prediction Results")
 
-        predictions = []
-
-        # Predict with Model 1
-        predicted_rent_1 = predict_rent_with_model(rf_model_1, scaler_1, features_1, user_input_data)
-        if predicted_rent_1 is not None:
-            st.success(f"Model 1 Predicted Rent: **Rs {predicted_rent_1:,.2f}**")
-            predictions.append(predicted_rent_1)
-
-        # Predict with Model 2
-        predicted_rent_2 = predict_rent_with_model(rf_model_2, scaler_2, features_2, user_input_data)
-        if predicted_rent_2 is not None:
-            st.info(f"Model 2 Predicted Rent: **Rs {predicted_rent_2:,.2f}**")
-            predictions.append(predicted_rent_2)
-        
-        # Calculate and display Median if both predictions are available
-        if len(predictions) == 2:
-            median_predicted_rent = np.median(predictions)
-            st.warning(f"**Median Predicted Rent (from both models): Rs {median_predicted_rent:,.2f}**")
+        # Predict with the single Model
+        predicted_rent = predict_rent_with_model(rf_model, scaler, features, user_input_data)
+        if predicted_rent is not None:
+            st.success(f"Predicted Rent: **Rs {predicted_rent:,.2f}**")
+            st.warning(f"**The predicted rent is: Rs {predicted_rent:,.2f}**") # Since there's only one model, its prediction is the median.
 
         # --- Price Classification ---
         FAIR_PRICE_TOLERANCE = 0.07
@@ -226,28 +204,16 @@ if (rf_model_1 is not None and scaler_1 is not None and features_1 is not None) 
         st.subheader("Price Comparison")
         listed_price = st.number_input("Enter the listed price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
 
-        if predicted_rent_1 is not None:
-            st.markdown(f"**Comparison based on Model 1's Prediction (Rs {predicted_rent_1:,.2f}):**")
-            lower_bound_1 = predicted_rent_1 * (1 - FAIR_PRICE_TOLERANCE)
-            upper_bound_1 = predicted_rent_1 * (1 + FAIR_PRICE_TOLERANCE)
-            st.text(f"Fair range: Rs {lower_bound_1:,.2f} - Rs {upper_bound_1:,.2f}")
-            if listed_price < lower_bound_1:
-                st.warning("Model 1 suggests this property appears to be **Underpriced**!")
-            elif listed_price > upper_bound_1:
-                st.warning("Model 1 suggests this property appears to be **Overpriced**!")
+        if predicted_rent is not None:
+            st.markdown(f"**Comparison based on Model's Prediction (Rs {predicted_rent:,.2f}):**")
+            lower_bound = predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
+            upper_bound = predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
+            st.text(f"Fair range: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
+            if listed_price < lower_bound:
+                st.warning("This property appears to be **Underpriced**!")
+            elif listed_price > upper_bound:
+                st.warning("This property appears to be **Overpriced**!")
             else:
-                st.success("Model 1 suggests this property appears to be **Fairly Priced**.")
-        
-        if predicted_rent_2 is not None:
-            st.markdown(f"**Comparison based on Model 2's Prediction (Rs {predicted_rent_2:,.2f}):**")
-            lower_bound_2 = predicted_rent_2 * (1 - FAIR_PRICE_TOLERANCE)
-            upper_bound_2 = predicted_rent_2 * (1 + FAIR_PRICE_TOLERANCE)
-            st.text(f"Fair range: Rs {lower_bound_2:,.2f} - Rs {upper_bound_2:,.2f}")
-            if listed_price < lower_bound_2:
-                st.warning("Model 2 suggests this property appears to be **Underpriced**!")
-            elif listed_price > upper_bound_2:
-                st.warning("Model 2 suggests this property appears to be **Overpriced**!")
-            else:
-                st.success("Model 2 suggests this property appears to be **Fairly Priced**.")
+                st.success("This property appears to be **Fairly Priced**.")
 else:
-    st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', 'f.pkl', 'm2.pkl', and 'f2.pkl') are available in the same directory.")
+    st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

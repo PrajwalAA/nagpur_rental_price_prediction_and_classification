@@ -27,7 +27,7 @@ def load_models():
     loaded_models = {}
     model_files = {
         "RandomForest_1": {"model": "m.pkl", "scaler": "s.pkl", "features": "f.pkl"},
-        "RandomForest_2": {"model": "m3.pkl", "scaler": "s3.pkl", "features": "f3.pkl"}
+        "RandomForest_2": {"model": "m2.pkl", "scaler": "s2.pkl", "features": "f2.pkl"}
     }
     for name, files in model_files.items():
         try:

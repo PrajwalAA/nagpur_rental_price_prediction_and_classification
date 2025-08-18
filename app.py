@@ -36,7 +36,7 @@ def load_resources():
         # Load Model 2 files
         rf_model_2 = joblib.load('m2.pkl')
         # Assuming scaler and features are the same files as model 1
-        scaler_2 = joblib.load('s.pkl')
+        scaler_2 = joblib.load('s2.pkl')
         features_2 = joblib.load('f2.pkl')
         st.success("Model 2 (m2.pkl) and its resources loaded successfully.")
 

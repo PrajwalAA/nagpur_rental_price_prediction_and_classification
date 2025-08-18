@@ -191,7 +191,7 @@ if rf_model is not None and scaler is not None and features is not None:
         st.markdown("---")
         st.subheader("Prediction Results")
 
-        # Predict with the single Model
+        # Predict with the singl Model
         predicted_rent = predict_rent_with_model(rf_model, scaler, features, user_input_data)
         if predicted_rent is not None:
             st.success(f"Predicted Rent: **Rs {predicted_rent:,.2f}**")
@@ -210,10 +210,10 @@ if rf_model is not None and scaler is not None and features is not None:
             upper_bound = predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
             st.text(f"Fair range: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
             if listed_price < lower_bound:
-                st.warning("This property appears to be **Underpriced**!")
+                st.warning(f"Listed price {listed_price} appears to be **Underpriced**!")
             elif listed_price > upper_bound:
-                st.warning("This property appears to be **Overpriced**!")
+                st.warning(f"Listed price {listed_price} appears to be **Overpriced**!")
             else:
-                st.success("This property appears to be **Fairly Priced**.")
+                st.success(f"Listed price {listed_price} appears to be **Fairly Priced**.")
 else:
     st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

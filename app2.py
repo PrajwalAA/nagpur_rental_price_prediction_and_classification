@@ -146,7 +146,7 @@ if rf_model is not None and scaler is not None and features is not None:
 
         # Define specific costs for each amenity (you can adjust these values)
         amenity_costs = {
-            'gym': 500, 'gated_community': 1000, 'intercom': 200, 'lift': 300, 
+            'gym': 50000, 'gated_community': 1000, 'intercom': 200, 'lift': 300, 
             'pet_allowed': 400, 'pool': 700, 'security': 600, 'water_supply_amenity': 250,
             'wifi': 300, 'gas_pipeline': 200, 'sports_facility': 400, 'kids_area': 150,
             'power_backup': 500, 'garden': 300, 'fire_support': 200, 'parking': 500,

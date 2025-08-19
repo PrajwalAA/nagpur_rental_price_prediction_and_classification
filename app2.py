@@ -254,7 +254,7 @@ if rf_model is not None and scaler is not None and features is not None:
                 
                 for year in range(1, 16):
                     current_projected_price *= (1 + annual_growth_rate / 100)
-                    yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
+                    projected_prices_data.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
                 years = list(range(1, 16))                
                 # Create the plot
                 plt.figure(figsize=(10, 6))

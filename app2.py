@@ -146,7 +146,7 @@ if rf_model is not None and scaler is not None and features is not None:
 
         # Define specific costs for each amenity (you can adjust these values)
         amenity_costs = {
-            'gym': 50000, 'gated_community': 1000, 'intercom': 200, 'lift': 300, 
+            'gym': 500, 'gated_community': 1000, 'intercom': 200, 'lift': 300, 
             'pet_allowed': 400, 'pool': 700, 'security': 600, 'water_supply_amenity': 250,
             'wifi': 300, 'gas_pipeline': 200, 'sports_facility': 400, 'kids_area': 150,
             'power_backup': 500, 'garden': 300, 'fire_support': 200, 'parking': 500,
@@ -204,21 +204,18 @@ if rf_model is not None and scaler is not None and features is not None:
     projection_years = st.slider("Years from now to project:", min_value=1, max_value=20, value=5, key='projection_years')
     annual_growth_rate = st.slider("Expected Annual Growth Rate (%):", min_value=0.0, max_value=10.0, value=3.5, step=0.1, key='annual_growth_rate')
     
-    # This is now the BASE listed price
-    base_listed_price = st.number_input("Enter the BASE listed price of the property for comparison:", min_value=0, value=25000, key='base_listed_price_input')
+    # This remains the user's input for the "actual" listed price for comparison.
+    listed_price = st.number_input("Enter the Listed Price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
 
 
     # When the user clicks the predict button
     if st.button("Predict Rent"):
-        # Calculate amenity additions
+        # Calculate amenity additions based on checked boxes
         amenity_additions = 0
         for amenity_key, cost in amenity_costs.items():
-            if st.session_state['amenity_states'].get(amenity_key, False): # Use .get with False as default for safety
+            if st.session_state['amenity_states'].get(amenity_key, False):
                 amenity_additions += cost
         
-        # Calculate the adjusted listed price
-        adjusted_listed_price = base_listed_price + amenity_additions
-
         user_input_data = {
             'Size_In_Sqft': size, 'Carpet_Area_Sqft': carpet_area, 'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
             'Balcony': balcony, 'Number_Of_Amenities': amenities_count, 'Security_Deposite': security_deposite,
@@ -231,15 +228,15 @@ if rf_model is not None and scaler is not None and features is not None:
             'pet_allowed': 1 if st.session_state['amenity_states']['pet_allowed'] else 0,
             'pool': 1 if st.session_state['amenity_states']['pool'] else 0,
             'security': 1 if st.session_state['amenity_states']['security'] else 0,
-            'water_supply': 1 if st.session_state['amenity_states']['water_supply_amenity'] else 0, # Note: this maps to numerical feature 'water_supply'
+            'water_supply': 1 if st.session_state['amenity_states']['water_supply_amenity'] else 0, 
             'wifi': 1 if st.session_state['amenity_states']['wifi'] else 0,
             'gas_pipeline': 1 if st.session_state['amenity_states']['gas_pipeline'] else 0,
             'sports_facility': 1 if st.session_state['amenity_states']['sports_facility'] else 0,
             'kids_area': 1 if st.session_state['amenity_states']['kids_area'] else 0,
             'power_backup': 1 if st.session_state['amenity_states']['power_backup'] else 0,
-            'Garden': 1 if st.session_state['amenity_states']['garden'] else 0, # Ensure correct capitalization if needed for model
-            'Fire_Support': 1 if st.session_state['amenity_states']['fire_support'] else 0, # Ensure correct capitalization
-            'Parking': 1 if st.session_state['amenity_states']['parking'] else 0, # Ensure correct capitalization
+            'Garden': 1 if st.session_state['amenity_states']['garden'] else 0, 
+            'Fire_Support': 1 if st.session_state['amenity_states']['fire_support'] else 0, 
+            'Parking': 1 if st.session_state['amenity_states']['parking'] else 0, 
             'ATM_Near_me': 1 if st.session_state['amenity_states']['atm_near_me'] else 0,
             'Airport_Near_me': 1 if st.session_state['amenity_states']['airport_near_me'] else 0,
             'Bus_Stop__Near_me': 1 if st.session_state['amenity_states']['bus_stop_near_me'] else 0,
@@ -263,83 +260,90 @@ if rf_model is not None and scaler is not None and features is not None:
         today = datetime.date.today()
         st.info(f"Prediction based on today's market conditions: **{today.strftime('%B %d, %Y')}**")
 
-        # Predict with the single Model
-        predicted_rent = predict_rent_with_model(rf_model, scaler, features, user_input_data)
-        if predicted_rent is not None:
-            st.success(f"Current Predicted Rent: **Rs {predicted_rent:,.2f}**")
+        # Predict with the single Model (base predicted rent)
+        base_predicted_rent = predict_rent_with_model(rf_model, scaler, features, user_input_data)
+        
+        # Calculate Adjusted Predicted Rent by adding amenity costs
+        adjusted_predicted_rent = base_predicted_rent + amenity_additions if base_predicted_rent is not None else None
 
-            # --- Future Rent Calculation ---
-            # Compound interest formula: A = P(1 + r)^t
-            future_predicted_rent = predicted_rent * (1 + annual_growth_rate / 100)**projection_years
-            
-            st.info(f"**Projected Rent in {projection_years} years:**")
-            st.success(f"Rs {future_predicted_rent:,.2f} (assuming a {annual_growth_rate:.1f}% annual growth rate)")
 
-            # --- Price Comparison ---
-            FAIR_PRICE_TOLERANCE = 0.5
-            
-            st.markdown("---")
-            st.subheader("Price Comparison")
+        if base_predicted_rent is not None:
+            st.success(f"Base Predicted Rent (without amenities): **Rs {base_predicted_rent:,.2f}**")
+            st.info(f"**Additional Value from Selected Amenities:** Rs {amenity_additions:,.2f}")
+            if adjusted_predicted_rent is not None:
+                st.success(f"**Adjusted Predicted Rent (Base + Amenities): Rs {adjusted_predicted_rent:,.2f}**")
 
-            if predicted_rent is not None:
-                st.markdown(f"**Base Listed Price:** Rs {base_listed_price:,.2f}")
-                st.markdown(f"**Additional Value from Selected Amenities:** Rs {amenity_additions:,.2f}")
-                st.markdown(f"**Adjusted Listed Price (Base + Amenities):** Rs {adjusted_listed_price:,.2f}")
-
-                st.markdown(f"**Comparison based on Model's Prediction (Rs {predicted_rent:,.2f}):**")
-                lower_bound = predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
-                upper_bound = predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
-                st.text(f"Fair range: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
+                # --- Future Rent Calculation (using adjusted_predicted_rent) ---
+                future_predicted_rent_adjusted = adjusted_predicted_rent * (1 + annual_growth_rate / 100)**projection_years
                 
-                # Use adjusted_listed_price for comparison
-                if adjusted_listed_price < lower_bound:
-                    st.warning(f"Adjusted listed price {adjusted_listed_price:,.2f} appears to be **Underpriced**!")
-                elif adjusted_listed_price > upper_bound:
-                    st.warning(f"Adjusted listed price {adjusted_listed_price:,.2f} appears to be **Overpriced**!")
+                st.info(f"**Projected Adjusted Rent in {projection_years} years:**")
+                st.success(f"Rs {future_predicted_rent_adjusted:,.2f} (assuming a {annual_growth_rate:.1f}% annual growth rate)")
+
+                # --- Price Comparison (comparing Listed Price to Adjusted Predicted Rent) ---
+                FAIR_PRICE_TOLERANCE = 0.5
+                
+                st.markdown("---")
+                st.subheader("Price Comparison")
+
+                st.markdown(f"**User Entered Listed Price:** Rs {listed_price:,.2f}")
+                st.markdown(f"**Comparison based on Adjusted Predicted Rent (Rs {adjusted_predicted_rent:,.2f}):**")
+                
+                lower_bound = adjusted_predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
+                upper_bound = adjusted_predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
+                st.text(f"Fair range for Adjusted Predicted Rent: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
+                
+                # Compare the user's listed price against the fair range of the adjusted predicted rent
+                if listed_price < lower_bound:
+                    st.warning(f"Listed price {listed_price:,.2f} appears to be **Underpriced** compared to Adjusted Predicted Rent!")
+                elif listed_price > upper_bound:
+                    st.warning(f"Listed price {listed_price:,.2f} appears to be **Overpriced** compared to Adjusted Predicted Rent!")
                 else:
-                    st.success(f"Adjusted listed price {adjusted_listed_price:,.2f} appears to be **Fairly Priced**.")
+                    st.success(f"Listed price {listed_price:,.2f} appears to be **Fairly Priced** compared to Adjusted Predicted Rent.")
 
-            # --- 15-Year Listed Price Projection and Graph ---
-            st.markdown("---")
-            st.subheader("15-Year Listed Price Projection")
-            if adjusted_listed_price > 0: # Use adjusted_listed_price for projection
-                st.info(f"Projecting the adjusted listed price (Rs {adjusted_listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
+                # --- 15-Year Predicted Price Projection and Graph (using adjusted_predicted_rent) ---
+                st.markdown("---")
+                st.subheader("15-Year Adjusted Predicted Rent Projection")
                 
-                # Create lists for the full projection data
-                yearly_projections = []
-                prices_for_plot = []
-                
-                current_projected_price = adjusted_listed_price # Start with adjusted price
-                for year in range(1, 16):
-                    current_projected_price *= (1 + annual_growth_rate / 100)
-                    yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
-                    prices_for_plot.append(current_projected_price)
-                
-                # Display the full list of projections
-                st.markdown("\n".join(yearly_projections))
-                
-                # Filter for odd years to plot
-                odd_years_to_plot = [y for y in range(1, 16) if y % 2 != 0]
-                odd_prices_to_plot = [prices_for_plot[y-1] for y in odd_years_to_plot if (y-1) < len(prices_for_plot)]
+                if adjusted_predicted_rent > 0:
+                    st.info(f"Projecting the Adjusted Predicted Rent (Rs {adjusted_predicted_rent:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
+                    
+                    # Create lists for the full projection data
+                    yearly_projections = []
+                    prices_for_plot = []
+                    
+                    current_projected_price = adjusted_predicted_rent # Start with adjusted predicted rent
+                    for year in range(1, 16):
+                        current_projected_price *= (1 + annual_growth_rate / 100)
+                        yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
+                        prices_for_plot.append(current_projected_price)
+                    
+                    # Display the full list of projections
+                    st.markdown("\n".join(yearly_projections))
+                    
+                    # Filter for odd years to plot
+                    odd_years_to_plot = [y for y in range(1, 16) if y % 2 != 0]
+                    odd_prices_to_plot = [prices_for_plot[y-1] for y in odd_years_to_plot if (y-1) < len(prices_for_plot)]
 
-                # Create the plot
-                plt.figure(figsize=(10, 6))
-                plt.plot(odd_years_to_plot, odd_prices_to_plot, marker='o', linestyle='-')
-                
-                # Add titles and labels
-                plt.title('15-Year Listed Price Projection (Odd Years Only)')
-                plt.xlabel('Year')
-                plt.ylabel('Projected Listed Price (Rs)')
-                plt.xticks(odd_years_to_plot) # Set x-ticks to odd years for clarity
-                plt.grid(True)
-                plt.tight_layout()
-                
-                # Display the plot in the Streamlit app
-                st.pyplot(plt)
-                plt.clf() # Clear the current figure to prevent plots from overlapping
+                    # Create the plot
+                    plt.figure(figsize=(10, 6))
+                    plt.plot(odd_years_to_plot, odd_prices_to_plot, marker='o', linestyle='-')
+                    
+                    # Add titles and labels
+                    plt.title('15-Year Adjusted Predicted Rent Projection (Odd Years Only)')
+                    plt.xlabel('Year')
+                    plt.ylabel('Projected Rent (Rs)')
+                    plt.xticks(odd_years_to_plot) # Set x-ticks to odd years for clarity
+                    plt.grid(True)
+                    plt.tight_layout()
+                    
+                    # Display the plot in the Streamlit app
+                    st.pyplot(plt)
+                    plt.clf() # Clear the current figure to prevent plots from overlapping
 
+                else:
+                    st.warning("Adjusted Predicted Rent is not positive. Cannot generate 15-year projection.")
             else:
-                st.warning("Please enter a valid base listed price to see the 15-year projection.")
+                st.error("Could not calculate adjusted predicted rent.")
 
 else:
     st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

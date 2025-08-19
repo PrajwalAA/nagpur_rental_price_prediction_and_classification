@@ -141,64 +141,115 @@ if rf_model is not None and scaler is not None and features is not None:
         maintenance_charge = st.selectbox("Maintenance Charge:", maintenance_charge_options, key='maintenance_charge')
 
 
+        # --- Organized Amenities & Proximity using expanders ---
         st.subheader("Amenities & Proximity (Check if available)")
-        
-        # --- Horizontal Checkboxes using columns ---
-        amenities_1, amenities_2, amenities_3 = st.columns(3)
-        with amenities_1:
-            gym = st.checkbox("Gym", key='gym')
-            gated_community = st.checkbox("Gated Community", key='gated_community')
-            intercom = st.checkbox("Intercom", key='intercom')
-            lift = st.checkbox("Lift", key='lift')
-            pet_allowed = st.checkbox("Pet Allowed", key='pet_allowed')
-            pool = st.checkbox("Pool", key='pool')
-            security = st.checkbox("Security", key='security')
-            water_supply_amenity = st.checkbox("Water Supply (as amenity)", help="Check if this specific water supply amenity is available", key='water_supply_amenity')
-        with amenities_2:
-            wifi = st.checkbox("WiFi", key='wifi')
-            gas_pipeline = st.checkbox("Gas Pipeline", key='gas_pipeline')
-            sports_facility = st.checkbox("Sports Facility", key='sports_facility')
-            kids_area = st.checkbox("Kids Area", key='kids_area')
-            power_backup = st.checkbox("Power Backup", key='power_backup')
-            garden = st.checkbox("Garden", key='garden')
-            fire_support = st.checkbox("Fire Support", key='fire_support')
-            parking = st.checkbox("Parking", key='parking')
-        with amenities_3:
-            atm_near_me = st.checkbox("ATM Near Me", key='atm_near_me')
-            airport_near_me = st.checkbox("Airport Near Me", key='airport_near_me')
-            bus_stop_near_me = st.checkbox("Bus Stop Near Me", key='bus_stop_near_me')
-            hospital_near_me = st.checkbox("Hospital Near Me", key='hospital_near_me')
-            mall_near_me = st.checkbox("Mall Near Me", key='mall_near_me')
-            market_near_me = st.checkbox("Market Near Me", key='market_near_me')
-            metro_station_near_me = st.checkbox("Metro Station Near Me", key='metro_station_near_me')
-            park_near_me = st.checkbox("Park Near Me", key='park_near_me')
-            school_near_me = st.checkbox("School Near Me", key='school_near_me')
-        # --- End of horizontal checkboxes ---
+
+        # Define specific costs for each amenity (you can adjust these values)
+        amenity_costs = {
+            'gym': 500, 'gated_community': 1000, 'intercom': 200, 'lift': 300, 
+            'pet_allowed': 400, 'pool': 700, 'security': 600, 'water_supply_amenity': 250,
+            'wifi': 300, 'gas_pipeline': 200, 'sports_facility': 400, 'kids_area': 150,
+            'power_backup': 500, 'garden': 300, 'fire_support': 200, 'parking': 500,
+            'atm_near_me': 100, 'airport_near_me': 200, 'bus_stop_near_me': 50, 
+            'hospital_near_me': 150, 'mall_near_me': 250, 'market_near_me': 150,
+            'metro_station_near_me': 200, 'park_near_me': 100, 'school_near_me': 150
+        }
+
+        # Store checkbox states in session state to access them after button click
+        # This is crucial for calculating total amenity cost
+        if 'amenity_states' not in st.session_state:
+            st.session_state['amenity_states'] = {}
+            for amenity_key in amenity_costs.keys():
+                st.session_state['amenity_states'][amenity_key] = False
+
+        with st.expander("Property Amenities"):
+            col_a, col_b = st.columns(2)
+            with col_a:
+                st.session_state['amenity_states']['gym'] = st.checkbox("Gym (+Rs 500)", key='gym_cb')
+                st.session_state['amenity_states']['intercom'] = st.checkbox("Intercom (+Rs 200)", key='intercom_cb')
+                st.session_state['amenity_states']['pet_allowed'] = st.checkbox("Pet Allowed (+Rs 400)", key='pet_allowed_cb')
+                st.session_state['amenity_states']['security'] = st.checkbox("Security (+Rs 600)", key='security_cb')
+                st.session_state['amenity_states']['gas_pipeline'] = st.checkbox("Gas Pipeline (+Rs 200)", key='gas_pipeline_cb')
+                st.session_state['amenity_states']['power_backup'] = st.checkbox("Power Backup (+Rs 500)", key='power_backup_cb')
+                st.session_state['amenity_states']['fire_support'] = st.checkbox("Fire Support (+Rs 200)", key='fire_support_cb')
+            with col_b:
+                st.session_state['amenity_states']['gated_community'] = st.checkbox("Gated Community (+Rs 1000)", key='gated_community_cb')
+                st.session_state['amenity_states']['lift'] = st.checkbox("Lift (+Rs 300)", key='lift_cb')
+                st.session_state['amenity_states']['pool'] = st.checkbox("Pool (+Rs 700)", key='pool_cb')
+                st.session_state['amenity_states']['water_supply_amenity'] = st.checkbox("Water Supply (as amenity) (+Rs 250)", help="Check if this specific water supply amenity is available", key='water_supply_amenity_cb')
+                st.session_state['amenity_states']['wifi'] = st.checkbox("WiFi (+Rs 300)", key='wifi_cb')
+                st.session_state['amenity_states']['sports_facility'] = st.checkbox("Sports Facility (+Rs 400)", key='sports_facility_cb')
+                st.session_state['amenity_states']['kids_area'] = st.checkbox("Kids Area (+Rs 150)", key='kids_area_cb')
+                st.session_state['amenity_states']['garden'] = st.checkbox("Garden (+Rs 300)", key='garden_cb')
+                st.session_state['amenity_states']['parking'] = st.checkbox("Parking (+Rs 500)", key='parking_cb')
+
+        with st.expander("Proximity to Essential Services"):
+            col_c, col_d = st.columns(2)
+            with col_c:
+                st.session_state['amenity_states']['atm_near_me'] = st.checkbox("ATM Near Me (+Rs 100)", key='atm_near_me_cb')
+                st.session_state['amenity_states']['bus_stop_near_me'] = st.checkbox("Bus Stop Near Me (+Rs 50)", key='bus_stop_near_me_cb')
+                st.session_state['amenity_states']['mall_near_me'] = st.checkbox("Mall Near Me (+Rs 250)", key='mall_near_me_cb')
+                st.session_state['amenity_states']['metro_station_near_me'] = st.checkbox("Metro Station Near Me (+Rs 200)", key='metro_station_near_me_cb')
+                st.session_state['amenity_states']['school_near_me'] = st.checkbox("School Near Me (+Rs 150)", key='school_near_me_cb')
+            with col_d:
+                st.session_state['amenity_states']['airport_near_me'] = st.checkbox("Airport Near Me (+Rs 200)", key='airport_near_me_cb')
+                st.session_state['amenity_states']['hospital_near_me'] = st.checkbox("Hospital Near Me (+Rs 150)", key='hospital_near_me_cb')
+                st.session_state['amenity_states']['market_near_me'] = st.checkbox("Market Near Me (+Rs 150)", key='market_near_me_cb')
+                st.session_state['amenity_states']['park_near_me'] = st.checkbox("Park Near Me (+Rs 100)", key='park_near_me_cb')
+
 
     # --- New User Inputs for Future Rate Prediction ---
     st.markdown("---")
     st.subheader("Future Rental Rate Projection")
     projection_years = st.slider("Years from now to project:", min_value=1, max_value=20, value=5, key='projection_years')
     annual_growth_rate = st.slider("Expected Annual Growth Rate (%):", min_value=0.0, max_value=10.0, value=3.5, step=0.1, key='annual_growth_rate')
-    listed_price = st.number_input("Enter the listed price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
+    
+    # This is now the BASE listed price
+    base_listed_price = st.number_input("Enter the BASE listed price of the property for comparison:", min_value=0, value=25000, key='base_listed_price_input')
 
 
     # When the user clicks the predict button
     if st.button("Predict Rent"):
+        # Calculate amenity additions
+        amenity_additions = 0
+        for amenity_key, cost in amenity_costs.items():
+            if st.session_state['amenity_states'].get(amenity_key, False): # Use .get with False as default for safety
+                amenity_additions += cost
+        
+        # Calculate the adjusted listed price
+        adjusted_listed_price = base_listed_price + amenity_additions
+
         user_input_data = {
             'Size_In_Sqft': size, 'Carpet_Area_Sqft': carpet_area, 'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
             'Balcony': balcony, 'Number_Of_Amenities': amenities_count, 'Security_Deposite': security_deposite,
             'Floor_No': floor_no, 'Total_floors_In_Building': total_floors, 'Road_Connectivity': road_connectivity,
-            'gym': 1 if gym else 0, 'gated_community': 1 if gated_community else 0, 'intercom': 1 if intercom else 0,
-            'lift': 1 if lift else 0, 'pet_allowed': 1 if pet_allowed else 0, 'pool': 1 if pool else 0,
-            'security': 1 if security else 0, 'water_supply': 1 if water_supply_amenity else 0, 'wifi': 1 if wifi else 0,
-            'gas_pipeline': 1 if gas_pipeline else 0, 'sports_facility': 1 if sports_facility else 0, 'kids_area': 1 if kids_area else 0,
-            'power_backup': 1 if power_backup else 0, 'Garden': 1 if garden else 0, 'Fire_Support': 1 if fire_support else 0,
-            'Parking': 1 if parking else 0, 'ATM_Near_me': 1 if atm_near_me else 0, 'Airport_Near_me': 1 if airport_near_me else 0,
-            'Bus_Stop__Near_me': 1 if bus_stop_near_me else 0, 'Hospital_Near_me': 1 if hospital_near_me else 0,
-            'Mall_Near_me': 1 if mall_near_me else 0, 'Market_Near_me': 1 if market_near_me else 0,
-            'Metro_Station_Near_me': 1 if metro_station_near_me else 0, 'Park_Near_me': 1 if park_near_me else 0,
-            'School_Near_me': 1 if school_near_me else 0, 'Property_Age': property_age,
+            # Pass the 0/1 status for the model based on the session state
+            'gym': 1 if st.session_state['amenity_states']['gym'] else 0,
+            'gated_community': 1 if st.session_state['amenity_states']['gated_community'] else 0,
+            'intercom': 1 if st.session_state['amenity_states']['intercom'] else 0,
+            'lift': 1 if st.session_state['amenity_states']['lift'] else 0,
+            'pet_allowed': 1 if st.session_state['amenity_states']['pet_allowed'] else 0,
+            'pool': 1 if st.session_state['amenity_states']['pool'] else 0,
+            'security': 1 if st.session_state['amenity_states']['security'] else 0,
+            'water_supply': 1 if st.session_state['amenity_states']['water_supply_amenity'] else 0, # Note: this maps to numerical feature 'water_supply'
+            'wifi': 1 if st.session_state['amenity_states']['wifi'] else 0,
+            'gas_pipeline': 1 if st.session_state['amenity_states']['gas_pipeline'] else 0,
+            'sports_facility': 1 if st.session_state['amenity_states']['sports_facility'] else 0,
+            'kids_area': 1 if st.session_state['amenity_states']['kids_area'] else 0,
+            'power_backup': 1 if st.session_state['amenity_states']['power_backup'] else 0,
+            'Garden': 1 if st.session_state['amenity_states']['garden'] else 0, # Ensure correct capitalization if needed for model
+            'Fire_Support': 1 if st.session_state['amenity_states']['fire_support'] else 0, # Ensure correct capitalization
+            'Parking': 1 if st.session_state['amenity_states']['parking'] else 0, # Ensure correct capitalization
+            'ATM_Near_me': 1 if st.session_state['amenity_states']['atm_near_me'] else 0,
+            'Airport_Near_me': 1 if st.session_state['amenity_states']['airport_near_me'] else 0,
+            'Bus_Stop__Near_me': 1 if st.session_state['amenity_states']['bus_stop_near_me'] else 0,
+            'Hospital_Near_me': 1 if st.session_state['amenity_states']['hospital_near_me'] else 0,
+            'Mall_Near_me': 1 if st.session_state['amenity_states']['mall_near_me'] else 0,
+            'Market_Near_me': 1 if st.session_state['amenity_states']['market_near_me'] else 0,
+            'Metro_Station_Near_me': 1 if st.session_state['amenity_states']['metro_station_near_me'] else 0,
+            'Park_Near_me': 1 if st.session_state['amenity_states']['park_near_me'] else 0,
+            'School_Near_me': 1 if st.session_state['amenity_states']['school_near_me'] else 0,
+            'Property_Age': property_age,
             'City': 'Nagpur', 'Area': area, 'Zone': zone, 'Frurnishing_Status': furnishing_status,
             'Recomened for': recommended_for, 'Muncipla Water Or Bore Water': municipal_bore_water,
             'Type of Society': type_of_society, 'Room': room_type, 'Type': property_type,
@@ -231,53 +282,64 @@ if rf_model is not None and scaler is not None and features is not None:
             st.subheader("Price Comparison")
 
             if predicted_rent is not None:
+                st.markdown(f"**Base Listed Price:** Rs {base_listed_price:,.2f}")
+                st.markdown(f"**Additional Value from Selected Amenities:** Rs {amenity_additions:,.2f}")
+                st.markdown(f"**Adjusted Listed Price (Base + Amenities):** Rs {adjusted_listed_price:,.2f}")
+
                 st.markdown(f"**Comparison based on Model's Prediction (Rs {predicted_rent:,.2f}):**")
                 lower_bound = predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
                 upper_bound = predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
                 st.text(f"Fair range: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
-                if listed_price < lower_bound:
-                    st.warning(f"Listed price {listed_price} appears to be **Underpriced**!")
-                elif listed_price > upper_bound:
-                    st.warning(f"Listed price {listed_price} appears to be **Overpriced**!")
+                
+                # Use adjusted_listed_price for comparison
+                if adjusted_listed_price < lower_bound:
+                    st.warning(f"Adjusted listed price {adjusted_listed_price:,.2f} appears to be **Underpriced**!")
+                elif adjusted_listed_price > upper_bound:
+                    st.warning(f"Adjusted listed price {adjusted_listed_price:,.2f} appears to be **Overpriced**!")
                 else:
-                    st.success(f"Listed price {listed_price} appears to be **Fairly Priced**.")
+                    st.success(f"Adjusted listed price {adjusted_listed_price:,.2f} appears to be **Fairly Priced**.")
 
-            # --- NEW: 15-Year Listed Price Projection and Graph ---
+            # --- 15-Year Listed Price Projection and Graph ---
             st.markdown("---")
             st.subheader("15-Year Listed Price Projection")
-            if listed_price > 0:
-                st.info(f"Projecting the listed price (Rs {listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
+            if adjusted_listed_price > 0: # Use adjusted_listed_price for projection
+                st.info(f"Projecting the adjusted listed price (Rs {adjusted_listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
                 
-                # Create a list to store the yearly projections and a separate list for the plot data
+                # Create lists for the full projection data
                 yearly_projections = []
                 prices_for_plot = []
-                current_projected_price = listed_price
                 
+                current_projected_price = adjusted_listed_price # Start with adjusted price
                 for year in range(1, 16):
                     current_projected_price *= (1 + annual_growth_rate / 100)
                     yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
                     prices_for_plot.append(current_projected_price)
                 
-                # Display the list
+                # Display the full list of projections
                 st.markdown("\n".join(yearly_projections))
                 
+                # Filter for odd years to plot
+                odd_years_to_plot = [y for y in range(1, 16) if y % 2 != 0]
+                odd_prices_to_plot = [prices_for_plot[y-1] for y in odd_years_to_plot if (y-1) < len(prices_for_plot)]
+
                 # Create the plot
-                years = list(range(1, 16))
                 plt.figure(figsize=(10, 6))
-                plt.plot(years, prices_for_plot, marker='o', linestyle='-')
+                plt.plot(odd_years_to_plot, odd_prices_to_plot, marker='o', linestyle='-')
                 
                 # Add titles and labels
-                plt.title('15-Year Listed Price Projection')
+                plt.title('15-Year Listed Price Projection (Odd Years Only)')
                 plt.xlabel('Year')
                 plt.ylabel('Projected Listed Price (Rs)')
+                plt.xticks(odd_years_to_plot) # Set x-ticks to odd years for clarity
                 plt.grid(True)
                 plt.tight_layout()
                 
                 # Display the plot in the Streamlit app
                 st.pyplot(plt)
-                
+                plt.clf() # Clear the current figure to prevent plots from overlapping
+
             else:
-                st.warning("Please enter a valid listed price to see the 15-year projection.")
+                st.warning("Please enter a valid base listed price to see the 15-year projection.")
 
 else:
     st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

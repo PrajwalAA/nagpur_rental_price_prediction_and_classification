@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import joblib
 import datetime
+import matplotlib.pyplot as plt
 
 # --- Constants for features ---
 # These lists define the features used in your model for proper alignment.
@@ -240,26 +241,36 @@ if rf_model is not None and scaler is not None and features is not None:
                     st.warning(f"Listed price {listed_price} appears to be **Overpriced**!")
                 else:
                     st.success(f"Listed price {listed_price} appears to be **Fairly Priced**.")
-            
-            # --- NEW: 15-Year Listed Price Projection ---
+
+            # --- NEW: 15-Year Listed Price Projection and Graph ---
             st.markdown("---")
             st.subheader("15-Year Listed Price Projection")
             if listed_price > 0:
                 st.info(f"Projecting the listed price (Rs {listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
                 
-                # Create a list to store the yearly projections
-                yearly_projections = []
-                current_projected_price = listed_price
+                # Data for the graph (from the user's provided list)
+                years = list(range(1, 16))
+                projected_prices_data = [
+                    15660.00, 16349.04, 17068.40, 17819.41, 18603.46, 19422.01, 20276.58, 
+                    21168.75, 22100.18, 23072.58, 24087.78, 25147.64, 26254.14, 27409.32, 28615.33
+                ]
                 
-                for year in range(1, 16):
-                    current_projected_price *= (1 + annual_growth_rate / 100)
-                    yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
+                # Create the plot
+                plt.figure(figsize=(10, 6))
+                plt.plot(years, projected_prices_data, marker='o', linestyle='-')
                 
-                # Display the list
-                st.markdown("\n".join(yearly_projections))
+                # Add titles and labels
+                plt.title('15-Year Listed Price Projection (Rs 15,000 at 4.4% p.a.)')
+                plt.xlabel('Year')
+                plt.ylabel('Projected Listed Price (Rs)')
+                plt.grid(True)
+                plt.tight_layout()
+                
+                # Display the plot in the Streamlit app
+                st.pyplot(plt)
+                
             else:
                 st.warning("Please enter a valid listed price to see the 15-year projection.")
-
 
 else:
     st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

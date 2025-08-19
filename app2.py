@@ -291,7 +291,7 @@ if rf_model is not None and scaler is not None and features is not None:
             st.info(f"**Additional Value from Selected Amenities:** Rs {amenity_additions:,.2f}")
             if adjusted_predicted_rent is not None:
                 # Display Adjusted Predicted Rent in white and bigger size
-                st.markdown(f"<span style='color:white; font-weight:bold; font-size: 3em;'> Predicted Rent (Base + Amenities): Rs {adjusted_predicted_rent:,.2f}</span>", unsafe_allow_html=True)
+                st.markdown(f"<span style='color:white; font-weight:bold; font-size: 3em;'>Rent ₹ {adjusted_predicted_rent:,.2f}</span>", unsafe_allow_html=True)
 
                 # --- Future Rent Calculation (using adjusted_predicted_rent) ---
                 future_predicted_rent_adjusted = adjusted_predicted_rent * (1 + annual_growth_rate / 100)**projection_years

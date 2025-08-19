@@ -258,7 +258,7 @@ if rf_model is not None and scaler is not None and features is not None:
                                
                 # Create the plot
                 plt.figure(figsize=(10, 6))
-                plt.plot(years, projected_prices_data, marker='o', linestyle='-')
+                plt.plot(year, projected_prices_data, marker='o', linestyle='-')
                 
                 # Add titles and labels
                 plt.title(f"15-Year Listed Price Projection (Rs {listed_price:,.2f} at {annual_growth_rate:.1f}% p.a.)")

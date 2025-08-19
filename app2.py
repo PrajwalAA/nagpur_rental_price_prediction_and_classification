@@ -97,10 +97,11 @@ if rf_model is not None and scaler is not None and features is not None:
         st.header("Property Details")
         size = st.number_input("Size In Sqft", min_value=0, max_value=20000, value=1000, key='size')
         
-        # New: Area Type and Value input
-        area_type_options = ["Carpet Area", "Built-up Area", "Super Area"]
-        area_type = st.selectbox("Select Area Type:", area_type_options, key='area_type')
-        area_value = st.number_input("Enter Area Value (Sqft)", min_value=0, max_value=50000, value=1500, key='area_value')
+        # New: Area Type and Value input inside an expander
+        with st.expander("Area Details"):
+            area_type_options = ["Carpet Area", "Built-up Area", "Super Area"]
+            area_type = st.selectbox("Select Area Type:", area_type_options, key='area_type')
+            area_value = st.number_input("Enter Area Value (Sqft)", min_value=0, max_value=50000, value=1500, key='area_value')
         
         bedrooms = st.number_input("Number of Bedrooms", min_value=0, max_value=10, value=2, key='bedrooms')
         bathrooms = st.number_input("Number of Bathrooms", min_value=0, max_value=10, value=2, key='bathrooms')

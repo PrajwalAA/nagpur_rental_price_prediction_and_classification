@@ -248,20 +248,26 @@ if rf_model is not None and scaler is not None and features is not None:
             if listed_price > 0:
                 st.info(f"Projecting the listed price (Rs {listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
                 
-                # Data for the graph (from the user's provided list)
-                projected_prices_data = []
+                # Create a list to store the yearly projections and a separate list for the plot data
+                yearly_projections = []
+                prices_for_plot = []
                 current_projected_price = listed_price
                 
-                for years in range(1, 16):
+                for year in range(1, 16):
                     current_projected_price *= (1 + annual_growth_rate / 100)
-                    projected_prices_data.append(f"Year {years}: Rs {current_projected_price:,.2f}")
-                               
+                    yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
+                    prices_for_plot.append(current_projected_price)
+                
+                # Display the list
+                st.markdown("\n".join(yearly_projections))
+                
                 # Create the plot
+                years = list(range(1, 16))
                 plt.figure(figsize=(10, 6))
-                plt.plot(years, projected_prices_data, marker='o', linestyle='-')
+                plt.plot(years, prices_for_plot, marker='o', linestyle='-')
                 
                 # Add titles and labels
-                plt.title(f"15-Year Listed Price Projection (Rs {listed_price:,.2f} at {annual_growth_rate:.1f}% p.a.)")
+                plt.title('15-Year Listed Price Projection')
                 plt.xlabel('Year')
                 plt.ylabel('Projected Listed Price (Rs)')
                 plt.grid(True)

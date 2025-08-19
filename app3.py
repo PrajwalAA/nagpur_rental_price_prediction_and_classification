@@ -96,7 +96,7 @@ if rf_model is not None and scaler is not None and features is not None:
     with col1:
         st.header("Property Details")
         size = st.number_input("Size In Sqft", min_value=0, max_value=20000, value=1000, key='size')
-        carpet_area = st.number_input("Carpet Area Sqft", min_value=0, max_value=20000, value=1000, key='carpet_area')
+        carpet_area = st.number_input("Carpet Area Sqft", min_value=0, max_value=size, value=1000, key='carpet_area')
         bedrooms = st.number_input("Number of Bedrooms", min_value=0, max_value=10, value=2, key='bedrooms')
         bathrooms = st.number_input("Number of Bathrooms", min_value=0, max_value=10, value=2, key='bathrooms')
         balcony = st.number_input("Number of Balconies", min_value=0, max_value=10, value=1, key='balcony')
@@ -105,7 +105,7 @@ if rf_model is not None and scaler is not None and features is not None:
         property_age = st.number_input("Property Age (in years)", min_value=0, max_value=100, value=5, key='property_age')
         amenities_count = st.number_input("Number of Amenities", min_value=0, max_value=30, value=5, key='amenities_count')
         security_deposite = st.number_input("Security Deposite", min_value=0, value=20000, key='security_deposite')
-        road_connectivity = st.slider("Road Connectivity (1-10)", min_value=0, max_value=10, value=5, key='road_connectivity')
+        road_connectivity = st.slider("Road Connectivity (0-10)", min_value=0, max_value=10, value=5, key='road_connectivity')
         
     with col2:
         st.header("Categorical & Binary Features")

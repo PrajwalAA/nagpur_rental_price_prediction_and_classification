@@ -300,7 +300,7 @@ if rf_model is not None and scaler is not None and features is not None:
                 st.success(f"Rs {future_predicted_rent_adjusted:,.2f} (assuming a {annual_growth_rate:.1f}% annual growth rate)")
 
                 # --- Price Comparison (comparing Listed Price to Adjusted Predicted Rent) ---
-                FAIR_PRICE_TOLERANCE = 0.5
+                FAIR_PRICE_TOLERANCE = 0.3
                 
                 st.markdown("---")
                 st.subheader("Price Comparison")

@@ -179,6 +179,8 @@ if rf_model is not None and scaler is not None and features is not None:
     st.subheader("Future Rental Rate Projection")
     projection_years = st.slider("Years from now to project:", min_value=1, max_value=20, value=5, key='projection_years')
     annual_growth_rate = st.slider("Expected Annual Growth Rate (%):", min_value=0.0, max_value=10.0, value=3.5, step=0.1, key='annual_growth_rate')
+    listed_price = st.number_input("Enter the listed price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
+
 
     # When the user clicks the predict button
     if st.button("Predict Rent"):
@@ -221,12 +223,11 @@ if rf_model is not None and scaler is not None and features is not None:
             st.info(f"**Projected Rent in {projection_years} years:**")
             st.success(f"Rs {future_predicted_rent:,.2f} (assuming a {annual_growth_rate:.1f}% annual growth rate)")
 
-            # --- Price Classification ---
+            # --- Price Comparison ---
             FAIR_PRICE_TOLERANCE = 0.5
             
             st.markdown("---")
             st.subheader("Price Comparison")
-            listed_price = st.number_input("Enter the listed price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
 
             if predicted_rent is not None:
                 st.markdown(f"**Comparison based on Model's Prediction (Rs {predicted_rent:,.2f}):**")
@@ -239,5 +240,26 @@ if rf_model is not None and scaler is not None and features is not None:
                     st.warning(f"Listed price {listed_price} appears to be **Overpriced**!")
                 else:
                     st.success(f"Listed price {listed_price} appears to be **Fairly Priced**.")
+            
+            # --- NEW: 15-Year Listed Price Projection ---
+            st.markdown("---")
+            st.subheader("15-Year Listed Price Projection")
+            if listed_price > 0:
+                st.info(f"Projecting the listed price (Rs {listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
+                
+                # Create a list to store the yearly projections
+                yearly_projections = []
+                current_projected_price = listed_price
+                
+                for year in range(1, 16):
+                    current_projected_price *= (1 + annual_growth_rate / 100)
+                    yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
+                
+                # Display the list
+                st.markdown("\n".join(yearly_projections))
+            else:
+                st.warning("Please enter a valid listed price to see the 15-year projection.")
+
+
 else:
     st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

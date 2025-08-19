@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import joblib
-import datetime  # Added this import
+import datetime
 
 # --- Constants for features ---
 # These lists define the features used in your model for proper alignment.
@@ -141,31 +141,38 @@ if rf_model is not None and scaler is not None and features is not None:
 
 
         st.subheader("Amenities & Proximity (Check if available)")
-        gym = st.checkbox("Gym", key='gym')
-        gated_community = st.checkbox("Gated Community", key='gated_community')
-        intercom = st.checkbox("Intercom", key='intercom')
-        lift = st.checkbox("Lift", key='lift')
-        pet_allowed = st.checkbox("Pet Allowed", key='pet_allowed')
-        pool = st.checkbox("Pool", key='pool')
-        security = st.checkbox("Security", key='security')
-        water_supply_amenity = st.checkbox("Water Supply (as amenity)", help="Check if this specific water supply amenity is available", key='water_supply_amenity')
-        wifi = st.checkbox("WiFi", key='wifi')
-        gas_pipeline = st.checkbox("Gas Pipeline", key='gas_pipeline')
-        sports_facility = st.checkbox("Sports Facility", key='sports_facility')
-        kids_area = st.checkbox("Kids Area", key='kids_area')
-        power_backup = st.checkbox("Power Backup", key='power_backup')
-        garden = st.checkbox("Garden", key='garden')
-        fire_support = st.checkbox("Fire Support", key='fire_support')
-        parking = st.checkbox("Parking", key='parking')
-        atm_near_me = st.checkbox("ATM Near Me", key='atm_near_me')
-        airport_near_me = st.checkbox("Airport Near Me", key='airport_near_me')
-        bus_stop_near_me = st.checkbox("Bus Stop Near Me", key='bus_stop_near_me')
-        hospital_near_me = st.checkbox("Hospital Near Me", key='hospital_near_me')
-        mall_near_me = st.checkbox("Mall Near Me", key='mall_near_me')
-        market_near_me = st.checkbox("Market Near Me", key='market_near_me')
-        metro_station_near_me = st.checkbox("Metro Station Near Me", key='metro_station_near_me')
-        park_near_me = st.checkbox("Park Near Me", key='park_near_me')
-        school_near_me = st.checkbox("School Near Me", key='school_near_me')
+        
+        # --- Horizontal Checkboxes using columns ---
+        amenities_1, amenities_2, amenities_3 = st.columns(3)
+        with amenities_1:
+            gym = st.checkbox("Gym", key='gym')
+            gated_community = st.checkbox("Gated Community", key='gated_community')
+            intercom = st.checkbox("Intercom", key='intercom')
+            lift = st.checkbox("Lift", key='lift')
+            pet_allowed = st.checkbox("Pet Allowed", key='pet_allowed')
+            pool = st.checkbox("Pool", key='pool')
+            security = st.checkbox("Security", key='security')
+            water_supply_amenity = st.checkbox("Water Supply (as amenity)", help="Check if this specific water supply amenity is available", key='water_supply_amenity')
+        with amenities_2:
+            wifi = st.checkbox("WiFi", key='wifi')
+            gas_pipeline = st.checkbox("Gas Pipeline", key='gas_pipeline')
+            sports_facility = st.checkbox("Sports Facility", key='sports_facility')
+            kids_area = st.checkbox("Kids Area", key='kids_area')
+            power_backup = st.checkbox("Power Backup", key='power_backup')
+            garden = st.checkbox("Garden", key='garden')
+            fire_support = st.checkbox("Fire Support", key='fire_support')
+            parking = st.checkbox("Parking", key='parking')
+        with amenities_3:
+            atm_near_me = st.checkbox("ATM Near Me", key='atm_near_me')
+            airport_near_me = st.checkbox("Airport Near Me", key='airport_near_me')
+            bus_stop_near_me = st.checkbox("Bus Stop Near Me", key='bus_stop_near_me')
+            hospital_near_me = st.checkbox("Hospital Near Me", key='hospital_near_me')
+            mall_near_me = st.checkbox("Mall Near Me", key='mall_near_me')
+            market_near_me = st.checkbox("Market Near Me", key='market_near_me')
+            metro_station_near_me = st.checkbox("Metro Station Near Me", key='metro_station_near_me')
+            park_near_me = st.checkbox("Park Near Me", key='park_near_me')
+            school_near_me = st.checkbox("School Near Me", key='school_near_me')
+        # --- End of horizontal checkboxes ---
 
     # When the user clicks the predict button
     if st.button("Predict Rent"):
@@ -203,7 +210,7 @@ if rf_model is not None and scaler is not None and features is not None:
             st.warning(f"**The predicted rent is: Rs {predicted_rent:,.2f}**") # Since there's only one model, its prediction is the median.
 
         # --- Price Classification ---
-        FAIR_PRICE_TOLERANCE = 0.3
+        FAIR_PRICE_TOLERANCE = 0.5
         
         st.markdown("---")
         st.subheader("Price Comparison")

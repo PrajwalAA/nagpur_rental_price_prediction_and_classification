@@ -266,15 +266,20 @@ if rf_model is not None and scaler is not None and features is not None:
                 # Display the full list of projections
                 st.markdown("\n".join(yearly_projections))
                 
+                # Filter for odd years to plot
+                odd_years_to_plot = [y for y in range(1, 16) if y % 2 != 0]
+                # Ensure prices_for_plot has at least 15 elements before indexing
+                odd_prices_to_plot = [prices_for_plot[y-1] for y in odd_years_to_plot if (y-1) < len(prices_for_plot)]
+
                 # Create the plot
-                years = list(range(1, 16)) # Use all years for the plot by default
                 plt.figure(figsize=(10, 6))
-                plt.plot(years, prices_for_plot, marker='o', linestyle='-')
+                plt.plot(odd_years_to_plot, odd_prices_to_plot, marker='o', linestyle='-')
                 
                 # Add titles and labels
-                plt.title(f"15-Year Listed Price Projection (Starting at Rs {listed_price:,.2f} with {annual_growth_rate:.1f}% p.a.)")
+                plt.title('15-Year Listed Price Projection (Odd Years Only)')
                 plt.xlabel('Year')
                 plt.ylabel('Projected Listed Price (Rs)')
+                plt.xticks(odd_years_to_plot) # Set x-ticks to odd years for clarity
                 plt.grid(True)
                 plt.tight_layout()
                 
@@ -286,5 +291,4 @@ if rf_model is not None and scaler is not None and features is not None:
                 st.warning("Please enter a valid listed price to see the 15-year projection.")
 
 else:
-    st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', '
-
+    st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

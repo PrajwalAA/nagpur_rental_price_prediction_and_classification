@@ -96,7 +96,12 @@ if rf_model is not None and scaler is not None and features is not None:
     with col1:
         st.header("Property Details")
         size = st.number_input("Size In Sqft", min_value=0, max_value=20000, value=1000, key='size')
-        carpet_area = st.number_input("Carpet Area Sqft", min_value=0, max_value=20000, value=1000, key='carpet_area')
+        
+        # New: Area Type and Value input
+        area_type_options = ["Carpet Area", "Built-up Area", "Super Area"]
+        area_type = st.selectbox("Select Area Type:", area_type_options, key='area_type')
+        area_value = st.number_input("Enter Area Value (Sqft)", min_value=0, max_value=50000, value=1500, key='area_value')
+        
         bedrooms = st.number_input("Number of Bedrooms", min_value=0, max_value=10, value=2, key='bedrooms')
         bathrooms = st.number_input("Number of Bathrooms", min_value=0, max_value=10, value=2, key='bathrooms')
         balcony = st.number_input("Number of Balconies", min_value=0, max_value=10, value=1, key='balcony')
@@ -216,8 +221,21 @@ if rf_model is not None and scaler is not None and features is not None:
             if st.session_state['amenity_states'].get(amenity_key, False):
                 amenity_additions += cost
         
+        # Define conversion ratios (adjust as needed for your local market)
+        built_up_to_carpet_ratio = 0.85 # Example: Carpet is 85% of Built-up
+        super_to_carpet_ratio = 0.70    # Example: Carpet is 70% of Super Built-up
+
+        # Convert the entered area to carpet area based on area_type
+        converted_carpet_area = area_value
+        if area_type == "Built-up Area":
+            converted_carpet_area = area_value * built_up_to_carpet_ratio
+        elif area_type == "Super Area":
+            converted_carpet_area = area_value * super_to_carpet_ratio
+
         user_input_data = {
-            'Size_In_Sqft': size, 'Carpet_Area_Sqft': carpet_area, 'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
+            'Size_In_Sqft': size,
+            'Carpet_Area_Sqft': converted_carpet_area, # Use the converted carpet area
+            'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
             'Balcony': balcony, 'Number_Of_Amenities': amenities_count, 'Security_Deposite': security_deposite,
             'Floor_No': floor_no, 'Total_floors_In_Building': total_floors, 'Road_Connectivity': road_connectivity,
             # Pass the 0/1 status for the model based on the session state
@@ -271,8 +289,8 @@ if rf_model is not None and scaler is not None and features is not None:
             st.success(f"Base Predicted Rent (without amenities): **Rs {base_predicted_rent:,.2f}**")
             st.info(f"**Additional Value from Selected Amenities:** Rs {amenity_additions:,.2f}")
             if adjusted_predicted_rent is not None:
-                # Display Adjusted Predicted Rent in a different color (e.g., blue)
-                st.markdown(f"<span style='color:white; font-weight:bold; font-size: 2em;'>Predicted Rent Rs {adjusted_predicted_rent:,.2f}</span>", unsafe_allow_html=True)
+                # Display Adjusted Predicted Rent in white and bigger size
+                st.markdown(f"<span style='color:white; font-weight:bold; font-size: 2em;'>Adjusted Predicted Rent (Base + Amenities): Rs {adjusted_predicted_rent:,.2f}</span>", unsafe_allow_html=True)
 
                 # --- Future Rent Calculation (using adjusted_predicted_rent) ---
                 future_predicted_rent_adjusted = adjusted_predicted_rent * (1 + annual_growth_rate / 100)**projection_years
@@ -299,7 +317,7 @@ if rf_model is not None and scaler is not None and features is not None:
                 elif listed_price > upper_bound:
                     st.warning(f"Listed price {listed_price:,.2f} appears to be **Overpriced** compared to Adjusted Predicted Rent!")
                 else:
-                    st.success(f"Listed price {listed_price:,.2f} appears to be **Fairly Priced** compared to Adjusted Predicted Rent.")
+                    st.success(f"Listed price {listed_price:,.2f} appears to be **Fairly Priced** compared to Adjusted Predicted Rent!")
 
                 # --- 15-Year Predicted Price Projection and Graph (using adjusted_predicted_rent) ---
                 st.markdown("---")

@@ -252,16 +252,16 @@ if rf_model is not None and scaler is not None and features is not None:
                 projected_prices_data = []
                 current_projected_price = listed_price
                 
-                for year in range(1, 16):
+                for r in range(1, 16):
                     current_projected_price *= (1 + annual_growth_rate / 100)
-                    projected_prices_data.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
-                years = list(range(1, 16))                
+                    projected_prices_data.append(f"Year {r}: Rs {current_projected_price:,.2f}")
+                               
                 # Create the plot
                 plt.figure(figsize=(10, 6))
                 plt.plot(years, projected_prices_data, marker='o', linestyle='-')
                 
                 # Add titles and labels
-                plt.title('15-Year Listed Price Projection (Rs {listed_price:,.2f} at {annual_growth_rate:.1f}% p.a.)')
+                plt.title(f"15-Year Listed Price Projection (Rs {listed_price:,.2f} at {annual_growth_rate:.1f}% p.a.)")
                 plt.xlabel('Year')
                 plt.ylabel('Projected Listed Price (Rs)')
                 plt.grid(True)

@@ -208,27 +208,32 @@ def validate_property_details(data_dict):
     # Fixed area validation logic
     area_type = data_dict.get('area_type', '')
     area_value = data_dict.get('area_value', 0)
-    total_size = data_dict.get('size', 0)
+    total_size = data_dict.get('size', 0)  # This is the "Size In Sqft" field
     
     if area_type == "Super Area":
+        # Super Area must match the total size exactly
         if area_value != total_size:
-            warnings.append("Super Area should match the total size entered!")
+            warnings.append(f"Super Area ({area_value} sq ft) must match the total size ({total_size} sq ft) exactly!")
     elif area_type == "Built-up Area":
-        if area_value > total_size:
-            warnings.append("Built-up Area cannot be greater than Super Area!")
-        # Check if built-up area is within reasonable range of super area
-        expected_min = total_size * 0.80
-        expected_max = total_size * 0.90
-        if area_value < expected_min or area_value > expected_max:
-            warnings.append(f"Built-up Area should be between {expected_min:.0f}-{expected_max:.0f} sq ft for a {total_size} sq ft property!")
+        # Built-up Area must be less than total size and within 80-90% of total size
+        if area_value >= total_size:
+            warnings.append(f"Built-up Area ({area_value} sq ft) must be less than total size ({total_size} sq ft)!")
+        else:
+            # Calculate expected range
+            expected_min = total_size * 0.80
+            expected_max = total_size * 0.90
+            if area_value < expected_min or area_value > expected_max:
+                warnings.append(f"Built-up Area ({area_value} sq ft) should be between {expected_min:.0f}-{expected_max:.0f} sq ft (80-90% of total size {total_size} sq ft)!")
     elif area_type == "Carpet Area":
-        if area_value > total_size:
-            warnings.append("Carpet Area cannot be greater than Super Area!")
-        # Check if carpet area is within reasonable range of super area
-        expected_min = total_size * 0.65
-        expected_max = total_size * 0.80
-        if area_value < expected_min or area_value > expected_max:
-            warnings.append(f"Carpet Area should be between {expected_min:.0f}-{expected_max:.0f} sq ft for a {total_size} sq ft property!")
+        # Carpet Area must be less than total size and within 65-80% of total size
+        if area_value >= total_size:
+            warnings.append(f"Carpet Area ({area_value} sq ft) must be less than total size ({total_size} sq ft)!")
+        else:
+            # Calculate expected range
+            expected_min = total_size * 0.65
+            expected_max = total_size * 0.80
+            if area_value < expected_min or area_value > expected_max:
+                warnings.append(f"Carpet Area ({area_value} sq ft) should be between {expected_min:.0f}-{expected_max:.0f} sq ft (65-80% of total size {total_size} sq ft)!")
     
     # Check if 1 RK has bedrooms
     if data_dict.get('room_type') == "1 RK" and data_dict.get('bedrooms', 0) > 0:
@@ -299,7 +304,39 @@ def validate_property_details(data_dict):
     if bedrooms > 0 and balcony > bedrooms + 2:
         warnings.append(f"Having {balcony} balconies for {bedrooms} bedrooms is unusual!")
     
-    return warnings
+    # Check for abnormal quantities of bedrooms or bathrooms
+    abnormal_deduction = False
+    abnormal_reasons = []
+    
+    # Check for abnormal bedroom count
+    if bedrooms >= 10:
+        # Check if property type is appropriate for 10 bedrooms
+        if property_type not in ['Independent House', 'Villa']:
+            abnormal_deduction = True
+            abnormal_reasons.append(f"Having {bedrooms} bedrooms in a {property_type} is unusual!")
+        
+        # Check if size is appropriate for 10 bedrooms
+        if size < 3000:
+            abnormal_deduction = True
+            abnormal_reasons.append(f"Having {bedrooms} bedrooms in a {size} sq ft property is unusual!")
+    
+    # Check for abnormal bathroom count
+    if bathrooms >= 10:
+        # Check if property type is appropriate for 10 bathrooms
+        if property_type not in ['Independent House', 'Villa']:
+            abnormal_deduction = True
+            abnormal_reasons.append(f"Having {bathrooms} bathrooms in a {property_type} is unusual!")
+        
+        # Check if size is appropriate for 10 bathrooms
+        if size < 3000:
+            abnormal_deduction = True
+            abnormal_reasons.append(f"Having {bathrooms} bathrooms in a {size} sq ft property is unusual!")
+    
+    # Add abnormal quantity warnings
+    for reason in abnormal_reasons:
+        warnings.append(f"ABNORMAL QUANTITY: {reason} A 30% deduction will be applied to the predicted rent.")
+    
+    return warnings, abnormal_deduction
 
 # --- Streamlit UI ---
 st.title("Rental Price Prediction App")
@@ -499,7 +536,9 @@ if rf_model is not None and scaler is not None and features is not None:
         }
 
         # Validate property details
-        validation_warnings = validate_property_details(user_input_data)
+        validation_results = validate_property_details(user_input_data)
+        validation_warnings = validation_results[0]
+        abnormal_deduction = validation_results[1]
         
         st.markdown("---")
         st.subheader("Prediction Results")
@@ -522,6 +561,11 @@ if rf_model is not None and scaler is not None and features is not None:
         if base_predicted_rent is not None:
             # Apply total amenity impact percentage
             adjusted_predicted_rent = base_predicted_rent * (1 + total_amenity_impact / 100)
+            
+            # Apply 30% deduction for abnormal quantities if detected
+            if abnormal_deduction:
+                adjusted_predicted_rent = adjusted_predicted_rent * 0.7  # Apply 30% deduction
+                st.error("30% deduction applied due to abnormal property configuration!")
 
         if base_predicted_rent is not None:
             st.success(f"Base Predicted Rent (without amenities): **Rs {base_predicted_rent:,.2f}**")

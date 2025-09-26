@@ -208,6 +208,12 @@ def validate_property_details(data_dict):
     # Check if built-up area is greater than total area
     if data_dict.get('area_type') == "Built-up Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
         warnings.append("Built-up area cannot be greater than total area!")
+
+    if data_dict.get('area_type') == "Carpet Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
+        warnings.append("Carpet Area cannot be greater than total area!")
+
+    if data_dict.get('area_type') == "Super Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
+        warnings.append("Super Area cannot be greater than total area!")
     
     # Check if 1 RK has bedrooms
     if data_dict.get('room_type') == "1 RK" and data_dict.get('bedrooms', 0) > 0:
@@ -384,7 +390,7 @@ if rf_model is not None and scaler is not None and features is not None:
                 st.session_state['amenity_states']['sports_facility'] = st.checkbox("Sports Facility (+2.0%)", key='sports_facility_cb')
                 st.session_state['amenity_states']['kids_area'] = st.checkbox("Kids Area (+0.75%)", key='kids_area_cb')
                 st.session_state['amenity_states']['garden'] = st.checkbox("Garden (+1.5%)", key='garden_cb')
-                st.session_state['amenity_states']['parking'] = st.checkbox("Parking (+2.5%)", key='parking_cb')
+                st.session_state['amenity_states']['parking'] = st.checkbox("Parking (+6.5%)", key='parking_cb')
 
         with st.expander("Proximity to Essential Services"):
             col_c, col_d = st.columns(2)

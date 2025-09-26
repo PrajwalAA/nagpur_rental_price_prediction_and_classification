@@ -24,6 +24,43 @@ NUMERICAL_FEATURES = [
     'Metro_Station_Near_me', 'Park_Near_me', 'School_Near_me', 'Property_Age'
 ]
 
+# --- Area to Zone Mapping ---
+AREA_TO_ZONE = {
+    'Hingna': 'Rural', 'Trimurti Nagar': 'West Zone', 'Ashirwad Nagar': 'West Zone',
+    'Beltarodi': 'East Zone', 'Besa': 'South Zone', 'Bharatwada': 'East Zone',
+    'Boriyapura': 'East Zone', 'Chandrakiran Nagar': 'West Zone', 'Dabha': 'East Zone',
+    'Dhantoli': 'Central Zone', 'Dharampeth': 'Central Zone', 'Dighori': 'East Zone',
+    'Duttawadi': 'Central Zone', 'Gandhibagh': 'Central Zone', 'Ganeshpeth': 'Central Zone',
+    'Godhni': 'North Zone', 'Gotal Panjri': 'North Zone', 'Hudkeswar': 'East Zone',
+    'Itwari': 'Central Zone', 'Jaitala': 'West Zone', 'Jaripatka': 'North Zone',
+    'Kalamna': 'East Zone', 'Kalmeshwar': 'Rural', 'Khamla': 'West Zone',
+    'Kharbi': 'East Zone', 'Koradi Colony': 'North Zone', 'Kotewada': 'North Zone',
+    'Mahal': 'Central Zone', 'Manewada': 'South Zone', 'Manish Nagar': 'West Zone',
+    'Mankapur': 'West Zone', 'Medical Square': 'West Zone', 'MIHAN': 'East Zone',
+    'Nandanwan': 'East Zone', 'Narendra Nagar Extension': 'West Zone',
+    'Nari Village': 'South Zone', 'Narsala': 'East Zone', 'Omkar Nagar': 'West Zone',
+    'Parvati Nagar': 'West Zone', 'Pratap Nagar': 'West Zone', 'Ram Nagar': 'West Zone',
+    'Rameshwari': 'North Zone', 'Reshim Bagh': 'Central Zone', 'Sadar': 'Central Zone',
+    'Sanmarga Nagar': 'West Zone', 'Seminary Hills': 'Central Zone',
+    'Shatabdi Square': 'West Zone', 'Sitabuldi': 'Central Zone', 'Somalwada': 'West Zone',
+    'Sonegaon': 'East Zone', 'Teka Naka': 'East Zone', 'Vayusena Nagar': 'West Zone',
+    'Wanadongri': 'North Zone', 'Wardsman Nagar': 'West Zone', 'Wathoda': 'South Zone',
+    'Zingabai Takli': 'Central Zone'
+}
+
+# --- Amenity Impact Percentages ---
+# Define the percentage impact of each amenity on the rent
+AMENITY_IMPACT = {
+    'gym': 2.5, 'gated_community': 5.0, 'intercom': 1.0, 'lift': 1.5, 
+    'pet_allowed': 2.0, 'pool': 3.5, 'security': 3.0, 'water_supply_amenity': 1.25,
+    'wifi': 1.5, 'gas_pipeline': 1.0, 'sports_facility': 2.0, 'kids_area': 0.75,
+    'power_backup': 2.5, 'garden': 1.5, 'fire_support': 1.0, 'parking': 2.5,
+    'atm_near_me': 0.5, 'airport_near_me': 1.0, 'bus_stop_near_me': 0.25, 
+    'hospital_near_me': 0.75, 'mall_near_me': 1.25, 'market_near_me': 0.75,
+    'metro_station_near_me': 1.0, 'park_near_me': 0.5, 'school_near_me': 0.75,
+    'vastu': 3.0  # Added Vastu compliance
+}
+
 # --- Load Model Resources ---
 @st.cache_resource
 def load_resources():
@@ -85,6 +122,59 @@ def predict_rent_with_model(model, scaler, original_df_columns, data_dict):
         st.error(f"Prediction failed for model. Error: {e}")
         return None
 
+# --- Validation Functions ---
+def validate_property_details(data_dict):
+    """Validate property details and return warnings if any."""
+    warnings = []
+    
+    # Check if built-up area is greater than total area
+    if data_dict.get('area_type') == "Built-up Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
+        warnings.append("Built-up area cannot be greater than total area!")
+    
+    # Check if 1 RK has bedrooms
+    if data_dict.get('room_type') == "1 RK" and data_dict.get('bedrooms', 0) > 0:
+        warnings.append("1 RK should not have bedrooms!")
+    
+    # Check if duplex has exactly 2 floors
+    if data_dict.get('property_type') == "Duplex" and data_dict.get('total_floors', 0) != 2:
+        warnings.append("Duplex property should have exactly 2 floors!")
+    
+    # Check bedroom, bathroom, balcony limits
+    room_type = data_dict.get('room_type', '')
+    bedrooms = data_dict.get('bedrooms', 0)
+    bathrooms = data_dict.get('bathrooms', 0)
+    balcony = data_dict.get('balcony', 0)
+    
+    if room_type == "1 RK":
+        if bathrooms > 1:
+            warnings.append("1 RK should not have more than 1 bathroom!")
+        if balcony > 1:
+            warnings.append("1 RK should not have more than 1 balcony!")
+    elif room_type == "1 BHK":
+        if bathrooms > 2:
+            warnings.append("1 BHK should not have more than 2 bathrooms!")
+        if balcony > 2:
+            warnings.append("1 BHK should not have more than 2 balconies!")
+    elif room_type == "2 BHK":
+        if bathrooms > 3:
+            warnings.append("2 BHK should not have more than 3 bathrooms!")
+        if balcony > 3:
+            warnings.append("2 BHK should not have more than 3 balconies!")
+    elif room_type in ["3 BHK", "4 BHK"]:
+        if bathrooms > bedrooms + 1:
+            warnings.append(f"{room_type} should not have more than {bedrooms + 1} bathrooms!")
+        if balcony > bedrooms + 1:
+            warnings.append(f"{room_type} should not have more than {bedrooms + 1} balconies!")
+    
+    # Check if flat has appropriate characteristics
+    if data_dict.get('property_type') == "Flat":
+        if data_dict.get('total_floors', 0) < 2:
+            warnings.append("Flat should be in a building with at least 2 floors!")
+        if data_dict.get('floor_no', 0) > data_dict.get('total_floors', 0):
+            warnings.append("Floor number cannot exceed total floors in building!")
+    
+    return warnings
+
 # --- Streamlit UI ---
 st.title("Rental Price Prediction App")
 st.markdown("Enter the details of the property to predict its fair rental price.")
@@ -96,16 +186,23 @@ if rf_model is not None and scaler is not None and features is not None:
     with col1:
         st.header("Property Details")
         size = st.number_input("Size In Sqft", min_value=0, max_value=20000, value=1000, key='size')
-        carpet_area = st.number_input("Carpet Area Sqft", min_value=0, max_value=20000, value=1000, key='carpet_area')
+        
+        # New: Area Type and Value input inside an expander
+        with st.expander("Area Details"):
+            area_type_options = ["Carpet Area", "Built-up Area", "Super Area"]
+            area_type = st.selectbox("Select Area Type:", area_type_options, key='area_type')
+            area_value = st.number_input("Enter Area Value (Sqft)", min_value=0, max_value=50000, value=1500, key='area_value')
+        
         bedrooms = st.number_input("Number of Bedrooms", min_value=0, max_value=10, value=2, key='bedrooms')
         bathrooms = st.number_input("Number of Bathrooms", min_value=0, max_value=10, value=2, key='bathrooms')
         balcony = st.number_input("Number of Balconies", min_value=0, max_value=10, value=1, key='balcony')
         total_floors = st.number_input("Total Floors In Building", min_value=0, max_value=50, value=4, key='total_floors')
         floor_no = st.number_input("Floor No", min_value=0, max_value=total_floors, value=1, key='floor_no')
         property_age = st.number_input("Property Age (in years)", min_value=0, max_value=100, value=5, key='property_age')
-        amenities_count = st.number_input("Number of Amenities", min_value=0, max_value=30, value=5, key='amenities_count')
+        
+        # Removed manual amenities count input - will be calculated automatically
         security_deposite = st.number_input("Security Deposite", min_value=0, value=20000, key='security_deposite')
-        road_connectivity = st.slider("Road Connectivity (0-10)", min_value=0, max_value=10, value=5, key='road_connectivity')
+        road_connectivity = st.slider("Road Connectivity (1-10)", min_value=0, max_value=10, value=5, key='road_connectivity')
         
     with col2:
         st.header("Categorical & Binary Features")
@@ -113,8 +210,10 @@ if rf_model is not None and scaler is not None and features is not None:
         area_options = ['Hingna', 'Trimurti Nagar', 'Ashirwad Nagar', 'Beltarodi', 'Besa', 'Bharatwada', 'Boriyapura', 'Chandrakiran Nagar', 'Dabha', 'Dhantoli', 'Dharampeth', 'Dighori', 'Duttawadi', 'Gandhibagh', 'Ganeshpeth', 'Godhni', 'Gotal Panjri', 'Hudkeswar', 'Itwari', 'Jaitala', 'Jaripatka', 'Kalamna', 'Kalmeshwar', 'Khamla', 'Kharbi', 'Koradi Colony', 'Kotewada', 'Mahal', 'Manewada', 'Manish Nagar', 'Mankapur', 'Medical Square', 'MIHAN', 'Nandanwan', 'Narendra Nagar Extension', 'Nari Village', 'Narsala', 'Omkar Nagar', 'Parvati Nagar', 'Pratap Nagar', 'Ram Nagar', 'Rameshwari', 'Reshim Bagh', 'Sadar', 'Sanmarga Nagar', 'Seminary Hills', 'Shatabdi Square', 'Sitabuldi', 'Somalwada', 'Sonegaon', 'Teka Naka', 'Vayusena Nagar', 'Wanadongri', 'Wardsman Nagar', 'Wathoda', 'Zingabai Takli']
         area = st.selectbox("Select Area:", area_options, key='area')
         
-        zone_options = ['East Zone', 'North Zone', 'South Zone', 'West Zone', 'Rural']
-        zone = st.selectbox("Select Zone:", zone_options, key='zone')
+        # Auto-set zone based on area
+        default_zone = AREA_TO_ZONE.get(area, 'West Zone')
+        zone_options = ['East Zone', 'North Zone', 'South Zone', 'West Zone', 'Central Zone', 'Rural']
+        zone = st.selectbox("Select Zone:", zone_options, index=zone_options.index(default_zone) if default_zone in zone_options else 0, key='zone')
         
         furnishing_status_options = ['Fully Furnished', 'Semi Furnished', 'Unfurnished']
         furnishing_status = st.selectbox("Select Furnishing Status:", furnishing_status_options, key='furnishing_status')
@@ -128,11 +227,21 @@ if rf_model is not None and scaler is not None and features is not None:
         type_of_society_options = ['Gated','Non-Gated','Township']
         type_of_society = st.selectbox("Type of Society:", type_of_society_options, key='type_of_society')
 
-        room_options = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK']
-        room_type = st.selectbox("Room Type:", room_options, key='room_type')
+        room_type_options = ['1 RK', '1 BHK', '2 BHK', '3 BHK', '4 BHK', '5+ BHK']
+        room_type = st.selectbox("Room Type:", room_type_options, key='room_type')
+        
+        # Auto-set bedrooms to 0 for 1 RK
+        if room_type == "1 RK":
+            st.info("1 RK selected: Number of bedrooms automatically set to 0")
+            bedrooms = 0
 
         property_type_options = ['Flat','Studio Apartment','Independent House','Independent Builder Floor','Villa','Duplex']
         property_type = st.selectbox("Property Type:", property_type_options, key='property_type')
+        
+        # Auto-set total floors to 2 for Duplex
+        if property_type == "Duplex":
+            st.info("Duplex selected: Total floors automatically set to 2")
+            total_floors = 2
 
         brokerage_options = ['No Brokerage', 'With Brokerage']
         brokerage = st.selectbox("Brokerage:", brokerage_options, key='brokerage')
@@ -144,40 +253,47 @@ if rf_model is not None and scaler is not None and features is not None:
         # --- Organized Amenities & Proximity using expanders ---
         st.subheader("Amenities & Proximity (Check if available)")
 
+        # Store checkbox states in session state to access them after button click
+        if 'amenity_states' not in st.session_state:
+            st.session_state['amenity_states'] = {}
+            for amenity_key in AMENITY_IMPACT.keys():
+                st.session_state['amenity_states'][amenity_key] = False
+
         with st.expander("Property Amenities"):
             col_a, col_b = st.columns(2)
             with col_a:
-                gym = st.checkbox("Gym", key='gym')
-                intercom = st.checkbox("Intercom", key='intercom')
-                pet_allowed = st.checkbox("Pet Allowed", key='pet_allowed')
-                security = st.checkbox("Security", key='security')
-                gas_pipeline = st.checkbox("Gas Pipeline", key='gas_pipeline')
-                power_backup = st.checkbox("Power Backup", key='power_backup')
-                fire_support = st.checkbox("Fire Support", key='fire_support')
+                st.session_state['amenity_states']['gym'] = st.checkbox("Gym (+2.5%)", key='gym_cb')
+                st.session_state['amenity_states']['intercom'] = st.checkbox("Intercom (+1.0%)", key='intercom_cb')
+                st.session_state['amenity_states']['pet_allowed'] = st.checkbox("Pet Allowed (+2.0%)", key='pet_allowed_cb')
+                st.session_state['amenity_states']['security'] = st.checkbox("Security (+3.0%)", key='security_cb')
+                st.session_state['amenity_states']['gas_pipeline'] = st.checkbox("Gas Pipeline (+1.0%)", key='gas_pipeline_cb')
+                st.session_state['amenity_states']['power_backup'] = st.checkbox("Power Backup (+2.5%)", key='power_backup_cb')
+                st.session_state['amenity_states']['fire_support'] = st.checkbox("Fire Support (+1.0%)", key='fire_support_cb')
+                st.session_state['amenity_states']['vastu'] = st.checkbox("Vastu Compliant (+3.0%)", key='vastu_cb')
             with col_b:
-                gated_community = st.checkbox("Gated Community", key='gated_community')
-                lift = st.checkbox("Lift", key='lift')
-                pool = st.checkbox("Pool", key='pool')
-                water_supply_amenity = st.checkbox("Water Supply (as amenity)", help="Check if this specific water supply amenity is available", key='water_supply_amenity')
-                wifi = st.checkbox("WiFi", key='wifi')
-                sports_facility = st.checkbox("Sports Facility", key='sports_facility')
-                kids_area = st.checkbox("Kids Area", key='kids_area')
-                garden = st.checkbox("Garden", key='garden')
-                parking = st.checkbox("Parking", key='parking')
+                st.session_state['amenity_states']['gated_community'] = st.checkbox("Gated Community (+5.0%)", key='gated_community_cb')
+                st.session_state['amenity_states']['lift'] = st.checkbox("Lift (+1.5%)", key='lift_cb')
+                st.session_state['amenity_states']['pool'] = st.checkbox("Pool (+3.5%)", key='pool_cb')
+                st.session_state['amenity_states']['water_supply_amenity'] = st.checkbox("Water Supply (as amenity) (+1.25%)", help="Check if this specific water supply amenity is available", key='water_supply_amenity_cb')
+                st.session_state['amenity_states']['wifi'] = st.checkbox("WiFi (+1.5%)", key='wifi_cb')
+                st.session_state['amenity_states']['sports_facility'] = st.checkbox("Sports Facility (+2.0%)", key='sports_facility_cb')
+                st.session_state['amenity_states']['kids_area'] = st.checkbox("Kids Area (+0.75%)", key='kids_area_cb')
+                st.session_state['amenity_states']['garden'] = st.checkbox("Garden (+1.5%)", key='garden_cb')
+                st.session_state['amenity_states']['parking'] = st.checkbox("Parking (+2.5%)", key='parking_cb')
 
         with st.expander("Proximity to Essential Services"):
             col_c, col_d = st.columns(2)
             with col_c:
-                atm_near_me = st.checkbox("ATM Near Me", key='atm_near_me')
-                bus_stop_near_me = st.checkbox("Bus Stop Near Me", key='bus_stop_near_me')
-                mall_near_me = st.checkbox("Mall Near Me", key='mall_near_me')
-                metro_station_near_me = st.checkbox("Metro Station Near Me", key='metro_station_near_me')
-                school_near_me = st.checkbox("School Near Me", key='school_near_me')
+                st.session_state['amenity_states']['atm_near_me'] = st.checkbox("ATM Near Me (+0.5%)", key='atm_near_me_cb')
+                st.session_state['amenity_states']['bus_stop_near_me'] = st.checkbox("Bus Stop Near Me (+0.25%)", key='bus_stop_near_me_cb')
+                st.session_state['amenity_states']['mall_near_me'] = st.checkbox("Mall Near Me (+1.25%)", key='mall_near_me_cb')
+                st.session_state['amenity_states']['metro_station_near_me'] = st.checkbox("Metro Station Near Me (+1.0%)", key='metro_station_near_me_cb')
+                st.session_state['amenity_states']['school_near_me'] = st.checkbox("School Near Me (+0.75%)", key='school_near_me_cb')
             with col_d:
-                airport_near_me = st.checkbox("Airport Near Me", key='airport_near_me')
-                hospital_near_me = st.checkbox("Hospital Near Me", key='hospital_near_me')
-                market_near_me = st.checkbox("Market Near Me", key='market_near_me')
-                park_near_me = st.checkbox("Park Near Me", key='park_near_me')
+                st.session_state['amenity_states']['airport_near_me'] = st.checkbox("Airport Near Me (+1.0%)", key='airport_near_me_cb')
+                st.session_state['amenity_states']['hospital_near_me'] = st.checkbox("Hospital Near Me (+0.75%)", key='hospital_near_me_cb')
+                st.session_state['amenity_states']['market_near_me'] = st.checkbox("Market Near Me (+0.75%)", key='market_near_me_cb')
+                st.session_state['amenity_states']['park_near_me'] = st.checkbox("Park Near Me (+0.5%)", key='park_near_me_cb')
 
 
     # --- New User Inputs for Future Rate Prediction ---
@@ -185,110 +301,186 @@ if rf_model is not None and scaler is not None and features is not None:
     st.subheader("Future Rental Rate Projection")
     projection_years = st.slider("Years from now to project:", min_value=1, max_value=20, value=5, key='projection_years')
     annual_growth_rate = st.slider("Expected Annual Growth Rate (%):", min_value=0.0, max_value=10.0, value=3.5, step=0.1, key='annual_growth_rate')
-    listed_price = st.number_input("Enter the listed price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
+    
+    # This remains the user's input for the "actual" listed price for comparison.
+    listed_price = st.number_input("Enter the Listed Price of the property for comparison:", min_value=0, value=25000, key='listed_price_comp')
 
 
     # When the user clicks the predict button
     if st.button("Predict Rent"):
+        # Calculate the number of amenities based on checked boxes
+        amenities_count = sum(1 for amenity_key, state in st.session_state['amenity_states'].items() if state)
+        
+        # Calculate amenity impact percentage
+        total_amenity_impact = 0
+        amenity_impact_details = {}
+        for amenity_key, impact in AMENITY_IMPACT.items():
+            if st.session_state['amenity_states'].get(amenity_key, False):
+                total_amenity_impact += impact
+                amenity_impact_details[amenity_key] = impact
+        
+        # Define conversion ratios (adjust as needed for your local market)
+        built_up_to_carpet_ratio = 0.85 # Example: Carpet is 85% of Built-up
+        super_to_carpet_ratio = 0.70    # Example: Carpet is 70% of Super Built-up
+
+        # Convert the entered area to carpet area based on area_type
+        converted_carpet_area = area_value
+        if area_type == "Built-up Area":
+            converted_carpet_area = area_value * built_up_to_carpet_ratio
+        elif area_type == "Super Area":
+            converted_carpet_area = area_value * super_to_carpet_ratio
+
         user_input_data = {
-            'Size_In_Sqft': size, 'Carpet_Area_Sqft': carpet_area, 'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
-            'Balcony': balcony, 'Number_Of_Amenities': amenities_count, 'Security_Deposite': security_deposite,
+            'Size_In_Sqft': size,
+            'Carpet_Area_Sqft': converted_carpet_area, # Use the converted carpet area
+            'Bedrooms': bedrooms, 'Bathrooms': bathrooms,
+            'Balcony': balcony, 'Number_Of_Amenities': amenities_count, # Now calculated automatically
+            'Security_Deposite': security_deposite,
             'Floor_No': floor_no, 'Total_floors_In_Building': total_floors, 'Road_Connectivity': road_connectivity,
-            'gym': 1 if gym else 0, 'gated_community': 1 if gated_community else 0, 'intercom': 1 if intercom else 0,
-            'lift': 1 if lift else 0, 'pet_allowed': 1 if pet_allowed else 0, 'pool': 1 if pool else 0,
-            'security': 1 if security else 0, 'water_supply': 1 if water_supply_amenity else 0, 'wifi': 1 if wifi else 0,
-            'gas_pipeline': 1 if gas_pipeline else 0, 'sports_facility': 1 if sports_facility else 0, 'kids_area': 1 if kids_area else 0,
-            'power_backup': 1 if power_backup else 0, 'Garden': 1 if garden else 0, 'Fire_Support': 1 if fire_support else 0,
-            'Parking': 1 if parking else 0, 'ATM_Near_me': 1 if atm_near_me else 0, 'Airport_Near_me': 1 if airport_near_me else 0,
-            'Bus_Stop__Near_me': 1 if bus_stop_near_me else 0, 'Hospital_Near_me': 1 if hospital_near_me else 0,
-            'Mall_Near_me': 1 if mall_near_me else 0, 'Market_Near_me': 1 if market_near_me else 0,
-            'Metro_Station_Near_me': 1 if metro_station_near_me else 0, 'Park_Near_me': 1 if park_near_me else 0,
-            'School_Near_me': 1 if school_near_me else 0, 'Property_Age': property_age,
+            # Pass the 0/1 status for the model based on the session state
+            'gym': 1 if st.session_state['amenity_states']['gym'] else 0,
+            'gated_community': 1 if st.session_state['amenity_states']['gated_community'] else 0,
+            'intercom': 1 if st.session_state['amenity_states']['intercom'] else 0,
+            'lift': 1 if st.session_state['amenity_states']['lift'] else 0,
+            'pet_allowed': 1 if st.session_state['amenity_states']['pet_allowed'] else 0,
+            'pool': 1 if st.session_state['amenity_states']['pool'] else 0,
+            'security': 1 if st.session_state['amenity_states']['security'] else 0,
+            'water_supply': 1 if st.session_state['amenity_states']['water_supply_amenity'] else 0, 
+            'wifi': 1 if st.session_state['amenity_states']['wifi'] else 0,
+            'gas_pipeline': 1 if st.session_state['amenity_states']['gas_pipeline'] else 0,
+            'sports_facility': 1 if st.session_state['amenity_states']['sports_facility'] else 0,
+            'kids_area': 1 if st.session_state['amenity_states']['kids_area'] else 0,
+            'power_backup': 1 if st.session_state['amenity_states']['power_backup'] else 0,
+            'Garden': 1 if st.session_state['amenity_states']['garden'] else 0, 
+            'Fire_Support': 1 if st.session_state['amenity_states']['fire_support'] else 0, 
+            'Parking': 1 if st.session_state['amenity_states']['parking'] else 0, 
+            'ATM_Near_me': 1 if st.session_state['amenity_states']['atm_near_me'] else 0,
+            'Airport_Near_me': 1 if st.session_state['amenity_states']['airport_near_me'] else 0,
+            'Bus_Stop__Near_me': 1 if st.session_state['amenity_states']['bus_stop_near_me'] else 0,
+            'Hospital_Near_me': 1 if st.session_state['amenity_states']['hospital_near_me'] else 0,
+            'Mall_Near_me': 1 if st.session_state['amenity_states']['mall_near_me'] else 0,
+            'Market_Near_me': 1 if st.session_state['amenity_states']['market_near_me'] else 0,
+            'Metro_Station_Near_me': 1 if st.session_state['amenity_states']['metro_station_near_me'] else 0,
+            'Park_Near_me': 1 if st.session_state['amenity_states']['park_near_me'] else 0,
+            'School_Near_me': 1 if st.session_state['amenity_states']['school_near_me'] else 0,
+            'Property_Age': property_age,
             'City': 'Nagpur', 'Area': area, 'Zone': zone, 'Frurnishing_Status': furnishing_status,
             'Recomened for': recommended_for, 'Muncipla Water Or Bore Water': municipal_bore_water,
             'Type of Society': type_of_society, 'Room': room_type, 'Type': property_type,
-            'Brokerage': brokerage, 'Maintenance_Charge': maintenance_charge
+            'Brokerage': brokerage, 'Maintenance_Charge': maintenance_charge,
+            # Add area_type and area_value for validation
+            'area_type': area_type, 'area_value': area_value
         }
 
+        # Validate property details
+        validation_warnings = validate_property_details(user_input_data)
+        
         st.markdown("---")
         st.subheader("Prediction Results")
+
+        # Display validation warnings if any
+        if validation_warnings:
+            st.warning("Property Validation Warnings:")
+            for warning in validation_warnings:
+                st.warning(f"- {warning}")
 
         # Get and display the current date
         today = datetime.date.today()
         st.info(f"Prediction based on today's market conditions: **{today.strftime('%B %d, %Y')}**")
 
-        # Predict with the single Model
-        predicted_rent = predict_rent_with_model(rf_model, scaler, features, user_input_data)
-        if predicted_rent is not None:
-            st.success(f"Current Predicted Rent: **Rs {predicted_rent:,.2f}**")
+        # Predict with the single Model (base predicted rent)
+        base_predicted_rent = predict_rent_with_model(rf_model, scaler, features, user_input_data)
+        
+        # Calculate Adjusted Predicted Rent by applying amenity impact percentages
+        adjusted_predicted_rent = None
+        if base_predicted_rent is not None:
+            # Apply total amenity impact percentage
+            adjusted_predicted_rent = base_predicted_rent * (1 + total_amenity_impact / 100)
 
-            # --- Future Rent Calculation ---
-            # Compound interest formula: A = P(1 + r)^t
-            future_predicted_rent = predicted_rent * (1 + annual_growth_rate / 100)**projection_years
+        if base_predicted_rent is not None:
+            st.success(f"Base Predicted Rent (without amenities): **Rs {base_predicted_rent:,.2f}**")
+            st.info(f"**Total Amenity Impact:** +{total_amenity_impact:.2f}%")
             
-            st.info(f"**Projected Rent in {projection_years} years:**")
-            st.success(f"Rs {future_predicted_rent:,.2f} (assuming a {annual_growth_rate:.1f}% annual growth rate)")
-
-            # --- Price Comparison ---
-            FAIR_PRICE_TOLERANCE = 0.5
+            # Display amenity impact details
+            with st.expander("View Amenity Impact Breakdown"):
+                for amenity, impact in amenity_impact_details.items():
+                    st.write(f"- {amenity.replace('_', ' ').title()}: +{impact:.2f}%")
             
-            st.markdown("---")
-            st.subheader("Price Comparison")
+            if adjusted_predicted_rent is not None:
+                # Display Adjusted Predicted Rent in white and bigger size
+                st.markdown(f"<span style='color:white; font-weight:bold; font-size: 3em;'>Rent ₹ {adjusted_predicted_rent:,.2f}</span>", unsafe_allow_html=True)
 
-            if predicted_rent is not None:
-                st.markdown(f"**Comparison based on Model's Prediction (Rs {predicted_rent:,.2f}):**")
-                lower_bound = predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
-                upper_bound = predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
-                st.text(f"Fair range: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
+                # --- Future Rent Calculation (using adjusted_predicted_rent) ---
+                future_predicted_rent_adjusted = adjusted_predicted_rent * (1 + annual_growth_rate / 100)**projection_years
+                
+                st.info(f"**Projected Adjusted Rent in {projection_years} years:**")
+                st.success(f"Rs {future_predicted_rent_adjusted:,.2f} (assuming a {annual_growth_rate:.1f}% annual growth rate)")
+
+                # --- Price Comparison (comparing Listed Price to Adjusted Predicted Rent) ---
+                FAIR_PRICE_TOLERANCE = 0.3
+                
+                st.markdown("---")
+                st.subheader("Price Comparison")
+
+                st.markdown(f"**User Entered Listed Price:** Rs {listed_price:,.2f}")
+                st.markdown(f"**Comparison based on Adjusted Predicted Rent (Rs {adjusted_predicted_rent:,.2f}):**")
+                
+                lower_bound = adjusted_predicted_rent * (1 - FAIR_PRICE_TOLERANCE)
+                upper_bound = adjusted_predicted_rent * (1 + FAIR_PRICE_TOLERANCE)
+                st.text(f"Fair range for Adjusted Predicted Rent: Rs {lower_bound:,.2f} - Rs {upper_bound:,.2f}")
+                
+                # Compare the user's listed price against the fair range of the adjusted predicted rent
                 if listed_price < lower_bound:
-                    st.warning(f"Listed price {listed_price} appears to be **Underpriced**!")
+                    st.warning(f"Listed price {listed_price:,.2f} appears to be **Underpriced** compared to Adjusted Predicted Rent!")
                 elif listed_price > upper_bound:
-                    st.warning(f"Listed price {listed_price} appears to be **Overpriced**!")
+                    st.warning(f"Listed price {listed_price:,.2f} appears to be **Overpriced** compared to Adjusted Predicted Rent!")
                 else:
-                    st.success(f"Listed price {listed_price} appears to be **Fairly Priced**.")
+                    st.success(f"Listed price {listed_price:,.2f} appears to be **Fairly Priced** compared to Adjusted Predicted Rent!")
 
-            # --- 15-Year Listed Price Projection and Graph ---
-            st.markdown("---")
-            st.subheader("15-Year Listed Price Projection")
-            if listed_price > 0:
-                st.info(f"Projecting the listed price (Rs {listed_price:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
+                # --- 15-Year Predicted Price Projection and Graph (using adjusted_predicted_rent) ---
+                st.markdown("---")
+                st.subheader("15-Year Adjusted Predicted Rent Projection")
                 
-                # Create lists for the full projection data
-                yearly_projections = []
-                prices_for_plot = []
-                
-                current_projected_price = listed_price
-                for year in range(1, 16):
-                    current_projected_price *= (1 + annual_growth_rate / 100)
-                    yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
-                    prices_for_plot.append(current_projected_price)
-                
-                # Display the full list of projections
-                st.markdown("\n".join(yearly_projections))
-                
-                # Filter for odd years to plot
-                odd_years_to_plot = [y for y in range(1, 16) if y % 2 != 0]
-                # Ensure prices_for_plot has at least 15 elements before indexing
-                odd_prices_to_plot = [prices_for_plot[y-1] for y in odd_years_to_plot if (y-1) < len(prices_for_plot)]
+                if adjusted_predicted_rent > 0:
+                    st.info(f"Projecting the Adjusted Predicted Rent (Rs {adjusted_predicted_rent:,.2f}) with a {annual_growth_rate:.1f}% annual increase:")
+                    
+                    # Create lists for the full projection data
+                    yearly_projections = []
+                    prices_for_plot = []
+                    
+                    current_projected_price = adjusted_predicted_rent # Start with adjusted predicted rent
+                    for year in range(1, 16):
+                        current_projected_price *= (1 + annual_growth_rate / 100)
+                        yearly_projections.append(f"**Year {year}:** Rs {current_projected_price:,.2f}")
+                        prices_for_plot.append(current_projected_price)
+                    
+                    # Display the full list of projections
+                    st.markdown("\n".join(yearly_projections))
+                    
+                    # Filter for odd years to plot
+                    odd_years_to_plot = [y for y in range(1, 16) if y % 2 != 0]
+                    odd_prices_to_plot = [prices_for_plot[y-1] for y in odd_years_to_plot if (y-1) < len(prices_for_plot)]
 
-                # Create the plot
-                plt.figure(figsize=(10, 6))
-                plt.plot(odd_years_to_plot, odd_prices_to_plot, marker='o', linestyle='-')
-                
-                # Add titles and labels
-                plt.title('15-Year Listed Price Projection (Odd Years Only)')
-                plt.xlabel('Year')
-                plt.ylabel('Projected Listed Price (Rs)')
-                plt.xticks(odd_years_to_plot) # Set x-ticks to odd years for clarity
-                plt.grid(True)
-                plt.tight_layout()
-                
-                # Display the plot in the Streamlit app
-                st.pyplot(plt)
-                plt.clf() # Clear the current figure to prevent plots from overlapping
+                    # Create the plot
+                    plt.figure(figsize=(10, 6))
+                    plt.plot(odd_years_to_plot, odd_prices_to_plot, marker='o', linestyle='-')
+                    
+                    # Add titles and labels
+                    plt.title('15-Year Adjusted Predicted Rent Projection (Odd Years Only)')
+                    plt.xlabel('Year')
+                    plt.ylabel('Projected Rent (Rs)')
+                    plt.xticks(odd_years_to_plot) # Set x-ticks to odd years for clarity
+                    plt.grid(True)
+                    plt.tight_layout()
+                    
+                    # Display the plot in the Streamlit app
+                    st.pyplot(plt)
+                    plt.clf() # Clear the current figure to prevent plots from overlapping
 
+                else:
+                    st.warning("Adjusted Predicted Rent is not positive. Cannot generate 15-year projection.")
             else:
-                st.warning("Please enter a valid listed price to see the 15-year projection.")
+                st.error("Could not calculate adjusted predicted rent.")
 
 else:
     st.warning("Cannot run prediction. Please ensure all model files ('m.pkl', 's.pkl', and 'f.pkl') are available in the same directory.")

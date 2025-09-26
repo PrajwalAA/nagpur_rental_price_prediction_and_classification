@@ -48,6 +48,84 @@ AREA_TO_ZONE = {
     'Zingabai Takli': 'Central Zone'
 }
 
+# --- Room Type Size Guidelines ---
+ROOM_SIZE_GUIDELINES = {
+    '1 RK': {'min': 200, 'max': 400},
+    '1 BHK': {'min': 400, 'max': 700},
+    '2 BHK': {'min': 700, 'max': 1100},
+    '3 BHK': {'min': 1100, 'max': 1500},
+    '4 BHK': {'min': 1500, 'max': 2200},
+    '5+ BHK': {'min': 2200, 'max': 10000}
+}
+
+# --- Property Type Room Configuration Rules ---
+PROPERTY_ROOM_RULES = {
+    'Studio Apartment': {
+        'bedrooms': {'min': 0, 'max': 0},
+        'bathrooms': {'min': 1, 'max': 1},
+        'balconies': {'min': 0, 'max': 1}
+    },
+    'Flat': {
+        'bedrooms': {'min': 0, 'max': 5},
+        'bathrooms': {'min': 1, 'max': 6},
+        'balconies': {'min': 0, 'max': 5}
+    },
+    'Independent House': {
+        'bedrooms': {'min': 1, 'max': 10},
+        'bathrooms': {'min': 1, 'max': 10},
+        'balconies': {'min': 0, 'max': 10}
+    },
+    'Independent Builder Floor': {
+        'bedrooms': {'min': 1, 'max': 6},
+        'bathrooms': {'min': 1, 'max': 6},
+        'balconies': {'min': 0, 'max': 5}
+    },
+    'Villa': {
+        'bedrooms': {'min': 2, 'max': 10},
+        'bathrooms': {'min': 2, 'max': 10},
+        'balconies': {'min': 1, 'max': 10}
+    },
+    'Duplex': {
+        'bedrooms': {'min': 2, 'max': 6},
+        'bathrooms': {'min': 2, 'max': 6},
+        'balconies': {'min': 1, 'max': 5}
+    }
+}
+
+# --- Room Type Configuration Rules ---
+ROOM_TYPE_RULES = {
+    '1 RK': {
+        'bedrooms': {'min': 0, 'max': 0},
+        'bathrooms': {'min': 1, 'max': 1},
+        'balconies': {'min': 0, 'max': 1}
+    },
+    '1 BHK': {
+        'bedrooms': {'min': 1, 'max': 1},
+        'bathrooms': {'min': 1, 'max': 2},
+        'balconies': {'min': 0, 'max': 2}
+    },
+    '2 BHK': {
+        'bedrooms': {'min': 2, 'max': 2},
+        'bathrooms': {'min': 1, 'max': 3},
+        'balconies': {'min': 0, 'max': 3}
+    },
+    '3 BHK': {
+        'bedrooms': {'min': 3, 'max': 3},
+        'bathrooms': {'min': 2, 'max': 4},
+        'balconies': {'min': 1, 'max': 4}
+    },
+    '4 BHK': {
+        'bedrooms': {'min': 4, 'max': 4},
+        'bathrooms': {'min': 2, 'max': 5},
+        'balconies': {'min': 1, 'max': 5}
+    },
+    '5+ BHK': {
+        'bedrooms': {'min': 5, 'max': 10},
+        'bathrooms': {'min': 3, 'max': 10},
+        'balconies': {'min': 1, 'max': 10}
+    }
+}
+
 # --- Amenity Impact Percentages ---
 # Define the percentage impact of each amenity on the rent
 AMENITY_IMPACT = {
@@ -139,32 +217,51 @@ def validate_property_details(data_dict):
     if data_dict.get('property_type') == "Duplex" and data_dict.get('total_floors', 0) != 2:
         warnings.append("Duplex property should have exactly 2 floors!")
     
-    # Check bedroom, bathroom, balcony limits
+    # Check bedroom, bathroom, balcony limits based on property type and room type
+    property_type = data_dict.get('property_type', '')
     room_type = data_dict.get('room_type', '')
     bedrooms = data_dict.get('bedrooms', 0)
     bathrooms = data_dict.get('bathrooms', 0)
     balcony = data_dict.get('balcony', 0)
+    size = data_dict.get('size', 0)
     
-    if room_type == "1 RK":
-        if bathrooms > 1:
-            warnings.append("1 RK should not have more than 1 bathroom!")
-        if balcony > 1:
-            warnings.append("1 RK should not have more than 1 balcony!")
-    elif room_type == "1 BHK":
-        if bathrooms > 2:
-            warnings.append("1 BHK should not have more than 2 bathrooms!")
-        if balcony > 2:
-            warnings.append("1 BHK should not have more than 2 balconies!")
-    elif room_type == "2 BHK":
-        if bathrooms > 3:
-            warnings.append("2 BHK should not have more than 3 bathrooms!")
-        if balcony > 3:
-            warnings.append("2 BHK should not have more than 3 balconies!")
-    elif room_type in ["3 BHK", "4 BHK"]:
-        if bathrooms > bedrooms + 1:
-            warnings.append(f"{room_type} should not have more than {bedrooms + 1} bathrooms!")
-        if balcony > bedrooms + 1:
-            warnings.append(f"{room_type} should not have more than {bedrooms + 1} balconies!")
+    # Validate based on property type
+    if property_type in PROPERTY_ROOM_RULES:
+        rules = PROPERTY_ROOM_RULES[property_type]
+        
+        # Check bedrooms
+        if bedrooms < rules['bedrooms']['min'] or bedrooms > rules['bedrooms']['max']:
+            warnings.append(f"For {property_type}, bedrooms should be between {rules['bedrooms']['min']} and {rules['bedrooms']['max']}!")
+        
+        # Check bathrooms
+        if bathrooms < rules['bathrooms']['min'] or bathrooms > rules['bathrooms']['max']:
+            warnings.append(f"For {property_type}, bathrooms should be between {rules['bathrooms']['min']} and {rules['bathrooms']['max']}!")
+        
+        # Check balconies
+        if balcony < rules['balconies']['min'] or balcony > rules['balconies']['max']:
+            warnings.append(f"For {property_type}, balconies should be between {rules['balconies']['min']} and {rules['balconies']['max']}!")
+    
+    # Validate based on room type
+    if room_type in ROOM_TYPE_RULES:
+        rules = ROOM_TYPE_RULES[room_type]
+        
+        # Check bedrooms
+        if bedrooms < rules['bedrooms']['min'] or bedrooms > rules['bedrooms']['max']:
+            warnings.append(f"For {room_type}, bedrooms should be between {rules['bedrooms']['min']} and {rules['bedrooms']['max']}!")
+        
+        # Check bathrooms
+        if bathrooms < rules['bathrooms']['min'] or bathrooms > rules['bathrooms']['max']:
+            warnings.append(f"For {room_type}, bathrooms should be between {rules['bathrooms']['min']} and {rules['bathrooms']['max']}!")
+        
+        # Check balconies
+        if balcony < rules['balconies']['min'] or balcony > rules['balconies']['max']:
+            warnings.append(f"For {room_type}, balconies should be between {rules['balconies']['min']} and {rules['balconies']['max']}!")
+    
+    # Validate size based on room type
+    if room_type in ROOM_SIZE_GUIDELINES:
+        guidelines = ROOM_SIZE_GUIDELINES[room_type]
+        if size < guidelines['min'] or size > guidelines['max']:
+            warnings.append(f"For {room_type}, size should be between {guidelines['min']} and {guidelines['max']} sq ft!")
     
     # Check if flat has appropriate characteristics
     if data_dict.get('property_type') == "Flat":
@@ -172,6 +269,14 @@ def validate_property_details(data_dict):
             warnings.append("Flat should be in a building with at least 2 floors!")
         if data_dict.get('floor_no', 0) > data_dict.get('total_floors', 0):
             warnings.append("Floor number cannot exceed total floors in building!")
+    
+    # Check bathroom to bedroom ratio
+    if bedrooms > 0 and bathrooms > bedrooms + 2:
+        warnings.append(f"Having {bathrooms} bathrooms for {bedrooms} bedrooms is unusual!")
+    
+    # Check balcony to bedroom ratio
+    if bedrooms > 0 and balcony > bedrooms + 2:
+        warnings.append(f"Having {balcony} balconies for {bedrooms} bedrooms is unusual!")
     
     return warnings
 

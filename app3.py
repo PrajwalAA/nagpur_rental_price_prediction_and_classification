@@ -206,14 +206,12 @@ def validate_property_details(data_dict):
     warnings = []
     
     # Check if built-up area is greater than total area
-    if data_dict.get('area_type') == "Built-up Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
-        warnings.append("Built-up area cannot be greater than total area!")
+
 
     if data_dict.get('area_type') == "Carpet Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
         warnings.append("Carpet Area cannot be greater than total area!")
 
-    if data_dict.get('area_type') == "Super Area" and data_dict.get('area_value', 0) > data_dict.get('size', 0):
-        warnings.append("Super Area cannot be greater than total area!")
+    
     
     # Check if 1 RK has bedrooms
     if data_dict.get('room_type') == "1 RK" and data_dict.get('bedrooms', 0) > 0:

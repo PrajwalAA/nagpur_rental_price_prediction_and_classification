@@ -132,7 +132,7 @@ AMENITY_IMPACT = {
     'gym': 2.5, 'gated_community': 5.0, 'intercom': 1.0, 'lift': 1.5, 
     'pet_allowed': 2.0, 'pool': 3.5, 'security': 3.0, 'water_supply_amenity': 1.25,
     'wifi': 1.5, 'gas_pipeline': 1.0, 'sports_facility': 2.0, 'kids_area': 0.75,
-    'power_backup': 2.5, 'garden': 1.5, 'fire_support': 1.0, 'parking': 2.5,
+    'power_backup': 2.5, 'garden': 1.5, 'fire_support': 1.0, 'parking': 6.5,
     'atm_near_me': 0.5, 'airport_near_me': 1.0, 'bus_stop_near_me': 0.25, 
     'hospital_near_me': 0.75, 'mall_near_me': 1.25, 'market_near_me': 0.75,
     'metro_station_near_me': 1.0, 'park_near_me': 0.5, 'school_near_me': 0.75,

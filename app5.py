@@ -50,13 +50,14 @@ AREA_TO_ZONE = {
 }
 
 # --- Room Size & Rules ---
+# --- Room Size & Rules ---
 ROOM_SIZE_GUIDELINES = {
-    '1 RK': {'min': 200, 'max': 400},
-    '1 BHK': {'min': 400, 'max': 700},
-    '2 BHK': {'min': 700, 'max': 1100},
-    '3 BHK': {'min': 1100, 'max': 1500},
-    '4 BHK': {'min': 1500, 'max': 2200},
-    '5+ BHK': {'min': 2200, 'max': 10000}
+    '1 RK': {'min': 150, 'max': 1000},    # Based on data: 180-1000 sqft
+    '1 BHK': {'min': 350, 'max': 1500},   # Based on data: 400-1500 sqft
+    '2 BHK': {'min': 500, 'max': 2500},   # Based on data: 500-2500 sqft
+    '3 BHK': {'min': 1000, 'max': 4000},  # Based on data: 1000-4000 sqft
+    '4 BHK': {'min': 1500, 'max': 5000},  # Based on data: 1500-4000 sqft
+    '5+ BHK': {'min': 1500, 'max': 10000} # Based on data: 1500-2600+ sqft
 }
 
 PROPERTY_ROOM_RULES = {
@@ -66,29 +67,29 @@ PROPERTY_ROOM_RULES = {
         'balconies': {'min': 0, 'max': 1}
     },
     'Flat': {
-        'bedrooms': {'min': 0, 'max': 5},
-        'bathrooms': {'min': 1, 'max': 6},
-        'balconies': {'min': 0, 'max': 5}
+        'bedrooms': {'min': 0, 'max': 5},    # Data shows 0-5 bedrooms
+        'bathrooms': {'min': 1, 'max': 6},   # Data shows 1-6 bathrooms
+        'balconies': {'min': 0, 'max': 5}    # Data shows 0-5 balconies
     },
     'Independent House': {
-        'bedrooms': {'min': 1, 'max': 10},
-        'bathrooms': {'min': 1, 'max': 10},
-        'balconies': {'min': 0, 'max': 10}
+        'bedrooms': {'min': 1, 'max': 10},   # Data shows 1-10 bedrooms
+        'bathrooms': {'min': 1, 'max': 10},  # Data shows 1-10 bathrooms
+        'balconies': {'min': 0, 'max': 10}   # Data shows 0-10 balconies
     },
     'Independent Builder Floor': {
-        'bedrooms': {'min': 1, 'max': 6},
-        'bathrooms': {'min': 1, 'max': 6},
-        'balconies': {'min': 0, 'max': 5}
+        'bedrooms': {'min': 1, 'max': 6},    # Data shows 1-6 bedrooms
+        'bathrooms': {'min': 1, 'max': 6},   # Data shows 1-6 bathrooms
+        'balconies': {'min': 0, 'max': 5}    # Data shows 0-5 balconies
     },
     'Villa': {
-        'bedrooms': {'min': 2, 'max': 10},
-        'bathrooms': {'min': 2, 'max': 10},
-        'balconies': {'min': 1, 'max': 10}
+        'bedrooms': {'min': 2, 'max': 10},   # Data shows 2-10 bedrooms
+        'bathrooms': {'min': 2, 'max': 10},  # Data shows 2-10 bathrooms
+        'balconies': {'min': 1, 'max': 10}   # Data shows 1-10 balconies
     },
     'Duplex': {
-        'bedrooms': {'min': 2, 'max': 6},
-        'bathrooms': {'min': 2, 'max': 6},
-        'balconies': {'min': 1, 'max': 5}
+        'bedrooms': {'min': 2, 'max': 6},    # Data shows 2-6 bedrooms
+        'bathrooms': {'min': 2, 'max': 6},   # Data shows 2-6 bathrooms
+        'balconies': {'min': 1, 'max': 5}    # Data shows 1-5 balconies
     }
 }
 
@@ -100,31 +101,30 @@ ROOM_TYPE_RULES = {
     },
     '1 BHK': {
         'bedrooms': {'min': 1, 'max': 1},
-        'bathrooms': {'min': 1, 'max': 2},
-        'balconies': {'min': 0, 'max': 2}
+        'bathrooms': {'min': 1, 'max': 2},   # Data shows 1-2 bathrooms
+        'balconies': {'min': 0, 'max': 2}    # Data shows 0-2 balconies
     },
     '2 BHK': {
         'bedrooms': {'min': 2, 'max': 2},
-        'bathrooms': {'min': 1, 'max': 3},
-        'balconies': {'min': 0, 'max': 3}
+        'bathrooms': {'min': 1, 'max': 3},   # Data shows 1-3 bathrooms
+        'balconies': {'min': 0, 'max': 3}    # Data shows 0-3 balconies
     },
     '3 BHK': {
         'bedrooms': {'min': 3, 'max': 3},
-        'bathrooms': {'min': 2, 'max': 4},
-        'balconies': {'min': 1, 'max': 4}
+        'bathrooms': {'min': 2, 'max': 4},   # Data shows 2-4 bathrooms
+        'balconies': {'min': 1, 'max': 4}    # Data shows 1-4 balconies
     },
     '4 BHK': {
         'bedrooms': {'min': 4, 'max': 4},
-        'bathrooms': {'min': 2, 'max': 5},
-        'balconies': {'min': 1, 'max': 5}
+        'bathrooms': {'min': 2, 'max': 5},   # Data shows 2-5 bathrooms
+        'balconies': {'min': 1, 'max': 5}    # Data shows 1-5 balconies
     },
     '5+ BHK': {
-        'bedrooms': {'min': 5, 'max': 10},
-        'bathrooms': {'min': 3, 'max': 10},
-        'balconies': {'min': 1, 'max': 10}
+        'bedrooms': {'min': 5, 'max': 10},   # Data shows 5-10 bedrooms
+        'bathrooms': {'min': 3, 'max': 10},  # Data shows 3-10 bathrooms
+        'balconies': {'min': 1, 'max': 10}   # Data shows 1-10 balconies
     }
 }
-
 # --- Amenity Impact Percentages ---
 AMENITY_IMPACT = {
     'gym': 2.5, 'gated_community': 5.0, 'intercom': 1.0, 'lift': 1.5,

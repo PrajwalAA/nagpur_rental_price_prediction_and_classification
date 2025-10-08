@@ -804,27 +804,6 @@ with tab2:
         .negative-change {
             color: #f87171;
         }
-        /* Domain input styling */
-        .domain-input-container {
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
-            background-color: #1a1a1a;
-        }
-        .domain-header {
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #4ade80;
-        }
-        .size-error {
-            color: #f87171;
-            font-weight: bold;
-        }
-        .size-success {
-            color: #4ade80;
-            font-weight: bold;
-        }
     </style>
     """, unsafe_allow_html=True)
     
@@ -843,61 +822,15 @@ with tab2:
             weightage_df['Floor'] = weightage_df['Floor'].apply(lambda x: f"Floor {x}")
             st.dataframe(weightage_df, hide_index=True, use_container_width=True)
         
-        # Initialize session state for domains if not exists
-        if 'commercial_domains' not in st.session_state:
-            st.session_state.commercial_domains = [
-                {'domain': 'Ground Floor', 'size': 0, 'carpet': 0}
-            ]
-        
-        # Maximum size limit
-        MAX_SIZE_LIMIT = 100000  # 100,000 sqft
-        
-        # Function to add new domain
-        def add_domain():
-            if len(st.session_state.commercial_domains) < 10:  # Limit to 10 domains
-                st.session_state.commercial_domains.append({
-                    'domain': f'Domain {len(st.session_state.commercial_domains) + 1}',
-                    'size': 0,
-                    'carpet': 0
-                })
-        
-        # Function to remove domain
-        def remove_domain(index):
-            if len(st.session_state.commercial_domains) > 1:
-                st.session_state.commercial_domains.pop(index)
-                # Renumber domains
-                for i, domain in enumerate(st.session_state.commercial_domains):
-                    if i == 0:
-                        domain['domain'] = 'Ground Floor'
-                    else:
-                        domain['domain'] = f'Domain {i}'
-        
-        # Function to calculate total size
-        def calculate_total_size():
-            total_size = sum(domain['size'] for domain in st.session_state.commercial_domains)
-            total_carpet = sum(domain['carpet'] for domain in st.session_state.commercial_domains)
-            return total_size, total_carpet
-        
-        # Add/Remove domain buttons outside the form
-        col_add, col_remove = st.columns([1, 1])
-        with col_add:
-            add_domain_clicked = st.button("➕ Add Domain", width='stretch')
-        with col_remove:
-            remove_domain_clicked = st.button("➖ Remove Last Domain", width='stretch')
-        
-        # Handle button clicks
-        if add_domain_clicked:
-            add_domain()
-        if remove_domain_clicked and len(st.session_state.commercial_domains) > 1:
-            remove_domain(len(st.session_state.commercial_domains)-1)
-        
         with st.form("commercial_prediction_form"):
             # --- Compact Input Grid ---
             col1, col2, col3 = st.columns(3)
             with col1:
                 property_type = st.selectbox("Property Type", ['showroom', 'shop', 'bare shell office', 'ready to use office', 'commercial property', 'werehouse', 'godown'], index=0, key='commercial_property_type')
+                size_sqft = st.number_input("Size (sqft)", min_value=100, max_value=100000, value=1000, step=50, key='commercial_size_sqft')
                 area = st.selectbox("Area", ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar'], index=0, key='commercial_area')
             with col2:
+                carpet_area = st.number_input("Carpet Area (sqft)", min_value=100, max_value=100000, value=800, step=50, key='commercial_carpet_area')
                 zone = st.selectbox("Zone", ['south', 'west', 'east', 'north'], index=0, key='commercial_zone')
                 location_hub = st.selectbox("Location Hub", ['commercial project', 'others', 'retail complex/building', 'market/high street', 'business park', 'it park', 'residential'], index=0, key='commercial_location_hub')
             with col3:
@@ -906,93 +839,6 @@ with tab2:
                 # --- Floor Selection with Multiselect Dropdown ---
                 floor_options = [f"Floor {i}" for i in range(0, 11)]
                 selected_floors = st.multiselect("Select Available Floors", floor_options, default=["Floor 0"], key='commercial_selected_floors')
-
-            # --- Combined Domain/Size Input Section ---
-            st.markdown("---")
-            st.subheader("Property Size Configuration")
-            
-            # Display domain inputs
-            total_size, total_carpet = calculate_total_size()
-            
-            for i, domain in enumerate(st.session_state.commercial_domains):
-                with st.container():
-                    st.markdown(f"""
-                    <div class="domain-input-container">
-                        <div class="domain-header">{domain['domain']}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    col_d1, col_d2, col_d3 = st.columns([2, 2, 1])
-                    with col_d1:
-                        new_size = st.number_input(
-                            f"Size (sqft)",
-                            min_value=0,
-                            max_value=MAX_SIZE_LIMIT,
-                            value=int(domain['size']),
-                            key=f'size_{i}',
-                            help="Enter the total size in square feet"
-                        )
-                        st.session_state.commercial_domains[i]['size'] = new_size
-                    with col_d2:
-                        new_carpet = st.number_input(
-                            f"Carpet Area (sqft)",
-                            min_value=0,
-                            max_value=MAX_SIZE_LIMIT,
-                            value=int(domain['carpet']),
-                            key=f'carpet_{i}',
-                            help="Enter the carpet area in square feet"
-                        )
-                        st.session_state.commercial_domains[i]['carpet'] = new_carpet
-                    with col_d3:
-                        if len(st.session_state.commercial_domains) > 1:
-                            # Use a selectbox to trigger removal instead of a button with callback
-                            remove_this = st.selectbox(
-                                "Action",
-                                ["Keep", "Remove"],
-                                key=f'remove_select_{i}',
-                                help="Select 'Remove' to delete this domain"
-                            )
-                            if remove_this == "Remove":
-                                remove_domain(i)
-                                st.rerun()
-
-            # Calculate and display total size with validation
-            total_size, total_carpet = calculate_total_size()
-            
-            # Display total size with color coding
-            if total_size > MAX_SIZE_LIMIT:
-                st.markdown(f"""
-                <div class="size-error">
-                    ⚠️ Total Size: {total_size:,} sqft (Exceeds limit of {MAX_SIZE_LIMIT:,} sqft)
-                </div>
-                """, unsafe_allow_html=True)
-            elif total_size == 0:
-                st.markdown(f"""
-                <div class="size-error">
-                    ⚠️ Total Size: {total_size:,} sqft (Please enter at least one size)
-                </div>
-                """, unsafe_allow_html=True)
-            else:
-                st.markdown(f"""
-                <div class="size-success">
-                    ✅ Total Size: {total_size:,} sqft | Total Carpet: {total_carpet:,} sqft
-                </div>
-                """, unsafe_allow_html=True)
-            
-            # Size validation message
-            if total_size > MAX_SIZE_LIMIT:
-                st.error(f"Total property size cannot exceed {MAX_SIZE_LIMIT:,} sqft. Please reduce the size of some domains.")
-            elif total_size == 0:
-                st.error("Please enter at least one domain size.")
-            
-            # Calculate average carpet area ratio
-            if total_size > 0:
-                carpet_ratio = (total_carpet / total_size) * 100
-                st.info(f"Average Carpet Area Ratio: {carpet_ratio:.1f}%")
-                if carpet_ratio < 60:
-                    st.warning("Carpet area ratio seems low (typically 60-85% of total size)")
-                elif carpet_ratio > 90:
-                    st.warning("Carpet area ratio seems high (typically 60-85% of total size)")
 
             col_a, col_b, col_c = st.columns(3)
             with col_a:
@@ -1018,7 +864,7 @@ with tab2:
                 brokerage = st.selectbox("Brokerage", ['yes', 'no'], index=0, key='commercial_brokerage')
             
             # --- Submit Button ---
-            predict_button = st.form_submit_button("Predict Rent Price", width='stretch', disabled=(total_size == 0 or total_size > MAX_SIZE_LIMIT))
+            predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
             
             if predict_button:
                 # Process the selected floors from multiselect
@@ -1027,10 +873,6 @@ with tab2:
                 
                 lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
                 expected_rent_increase = float(expected_rent_increase_str)
-                
-                # Use the calculated total sizes
-                size_sqft = total_size
-                carpet_area = total_carpet
                 
                 user_data = {
                     'listing litle': property_type, 'city': 'nagpur', 'area': area, 'zone': zone,
@@ -1062,7 +904,6 @@ with tab2:
                         st.session_state.commercial_user_data = user_data
                         st.session_state.commercial_processed_df = processed_df
                         st.session_state.commercial_selected_floors = selected_floors
-                        st.session_state.commercial_domains_data = st.session_state.commercial_domains.copy()
                         st.success("Prediction successful! See the results below.")
 
                     except Exception as e:
@@ -1078,7 +919,6 @@ with tab2:
             avg_weightage = st.session_state.commercial_avg_weightage
             user_data = st.session_state.commercial_user_data
             selected_floors = st.session_state.commercial_selected_floors
-            domains_data = st.session_state.get('commercial_domains_data', [])
             
             col1, col2 = st.columns(2)
             
@@ -1103,16 +943,8 @@ with tab2:
                 
                 st.markdown('<h4>Property Summary</h4>', unsafe_allow_html=True)
                 st.write(f"**Property Type:** {user_data['property_type'].title()}")
-                st.write(f"**Total Size:** {user_data['size_in_sqft']:,} sqft")
-                st.write(f"**Total Carpet Area:** {user_data['carpet_area_sqft']:,} sqft")
+                st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
                 st.write(f"**Area:** {user_data['area'].title()}")
-                
-                # Display domain breakdown
-                if domains_data:
-                    st.write("**Domain Breakdown:**")
-                    for domain in domains_data:
-                        st.write(f"- {domain['domain']}: {domain['size']:,} sqft (Carpet: {domain['carpet']:,} sqft)")
-                
                 # Display selected floors
                 floors_list = user_data['floor_no'].split(',')
                 if len(floors_list) == 1:

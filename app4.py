@@ -752,81 +752,51 @@ with tab1:
                     st.error("Adjusted predicted rent not available.")
 
 # Tab 2: Commercial Price Prediction
+# Tab 2: Commercial Price Prediction
 with tab2:
-    # Custom CSS for white text, dark theme, and compact layout
+    # Custom CSS for dark theme and compact layout
     st.markdown("""
     <style>
-        /* Set default text color to white and background to dark */
-        .stApp {
-            background-color: #0E1117;
-            color: white;
-        }
-        html, body, .stMarkdown, h1, h2, h3, h4, h5, h6, p, span, div, label {
-            color: white !important;
-        }
-        /* Make widgets more compact and ensure text is white */
+        .stApp { background-color: #0E1117; color: white; }
+        html, body, .stMarkdown, h1, h2, h3, h4, h5, h6, p, span, div, label { color: white !important; }
         .stSelectbox > div > div > div { color: white; }
         .stNumberInput > div > div > input { color: white; }
         .stMultiSelect > div > div > div { color: white; }
         .element-container { margin-bottom: 0.5rem; }
         .stForm { border: 0px; padding: 0rem; }
-        /* Style expander header */
-        .streamlit-expanderHeader {
-            background-color: #262730;
-            border-radius: 5px;
-        }
-        /* Style multiselect dropdown */
-        .stMultiSelect div[data-baseweb="select"] span {
-            color: white;
-        }
-        /* Custom styling for price display */
-        .price-container {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            padding: 20px;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
-        .price-label {
-            font-size: 14px;
-            opacity: 0.9;
-        }
-        .price-value {
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .price-change {
-            font-size: 16px;
-            margin-top: 5px;
-        }
-        .positive-change {
-            color: #4ade80;
-        }
-        .negative-change {
-            color: #f87171;
-        }
+        .streamlit-expanderHeader { background-color: #262730; border-radius: 5px; }
+        .stMultiSelect div[data-baseweb="select"] span { color: white; }
+        .price-container { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 20px; border-radius: 10px; margin: 10px 0; }
+        .price-label { font-size: 14px; opacity: 0.9; }
+        .price-value { font-size: 28px; font-weight: bold; }
+        .price-change { font-size: 16px; margin-top: 5px; }
+        .positive-change { color: #4ade80; }
+        .negative-change { color: #f87171; }
     </style>
     """, unsafe_allow_html=True)
-    
+
     st.markdown('<h1 style="text-align: center;">🏢 Commercial Property Rent Predictor</h1>', unsafe_allow_html=True)
-    
-    # Load commercial model resources
+
+    # Load commercial model
     model, scaler, feature_names = load_commercial_resources()
-    
     if model is None or scaler is None or feature_names is None:
         st.error("Unable to load commercial model components. Please check your files.")
     else:
-        # Display floor weightage information
+        # Floor weightage info
         with st.expander("📊 Floor Premium Rates", expanded=False):
             st.write("Rent adjustments based on floor selection:")
             weightage_df = pd.DataFrame(list(FLOOR_WEIGHTAGE.items()), columns=['Floor', 'Premium (%)'])
             weightage_df['Floor'] = weightage_df['Floor'].apply(lambda x: f"Floor {x}")
             st.dataframe(weightage_df, hide_index=True, use_container_width=True)
-        
+
         with st.form("commercial_prediction_form"):
-            # --- Compact Input Grid ---
+            # --- Input Grid ---
             col1, col2, col3 = st.columns(3)
             with col1:
-                property_type = st.selectbox("Property Type", ['showroom', 'shop', 'bare shell office', 'ready to use office', 'commercial property', 'werehouse', 'godown'], index=0, key='commercial_property_type')
+                property_type = st.selectbox("Property Type", 
+                                             ['showroom', 'shop', 'bare shell office', 'ready to use office', 
+                                              'commercial property', 'warehouse', 'godown'], 
+                                             index=0, key='commercial_property_type')
                 size_sqft = st.number_input("Size (sqft)", min_value=100, max_value=100000, value=1000, step=50, key='commercial_size_sqft')
                 area = st.selectbox("Area", ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar'], index=0, key='commercial_area')
             with col2:
@@ -836,7 +806,6 @@ with tab2:
             with col3:
                 ownership = st.selectbox("Ownership", ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], index=0, key='commercial_ownership')
                 total_floors = st.selectbox("Total Floors", ['3 floors', '1 floor', '2 floors', '4 floors', '5 floors', '8 floors', '7 floors', '6 floors', '15 floors', '9 floors', '10 floors'], index=0, key='commercial_total_floors')
-                # --- Floor Selection with Multiselect Dropdown ---
                 floor_options = [f"Floor {i}" for i in range(0, 11)]
                 selected_floors = st.multiselect("Select Available Floors", floor_options, default=["Floor 0"], key='commercial_selected_floors')
 
@@ -848,7 +817,7 @@ with tab2:
             with col_c:
                 property_age = st.number_input("Property Age (years)", min_value=0, max_value=100, value=5, key='commercial_property_age')
 
-            # --- Expanders for less critical details ---
+            # --- Amenities & Other Details ---
             with st.expander("Amenities & Charges"):
                 amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 'water storage', 'staircase', 'security', 'cctv', 'power backup', 'reception area', 'pantry', 'fire extinguishers', 'fire safety', 'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
                 selected_amenities = st.multiselect("Select Amenities", amenities_options, key='commercial_selected_amenities')
@@ -862,18 +831,34 @@ with tab2:
                 expected_rent_increase_str = st.selectbox("Yearly Rent Increase", ['0.05', '0.10'], index=0, key='commercial_expected_rent_increase')
                 negotiable = st.selectbox("Negotiable", ['yes', 'no'], index=0, key='commercial_negotiable')
                 brokerage = st.selectbox("Brokerage", ['yes', 'no'], index=0, key='commercial_brokerage')
-            
+
             # --- Submit Button ---
             predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
-            
+
             if predict_button:
-                # Process the selected floors from multiselect
+                # --- Validation ---
+                errors = []
+                if carpet_area > size_sqft:
+                    errors.append("❌ Carpet area cannot exceed total size.")
+                if property_type == "showroom" and carpet_area < 500:
+                    errors.append("❌ Showroom must have at least 500 sqft carpet area.")
+                elif property_type in ["ready to use office", "bare shell office"] and carpet_area < 250:
+                    errors.append("❌ Office must have at least 250 sqft carpet area.")
+                max_floors_allowed = int(total_floors.split()[0])
+                if len(selected_floors) > max_floors_allowed:
+                    errors.append(f"❌ You cannot select more than {max_floors_allowed} floors.")
+
+                if errors:
+                    for e in errors:
+                        st.error(e)
+                    st.stop()
+
+                # --- Process Inputs ---
                 floor_numbers = [floor.replace("Floor ", "") for floor in selected_floors]
                 floor_no_str = ",".join(sorted(floor_numbers))
-                
                 lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
                 expected_rent_increase = float(expected_rent_increase_str)
-                
+
                 user_data = {
                     'listing litle': property_type, 'city': 'nagpur', 'area': area, 'zone': zone,
                     'location_hub': location_hub, 'property_type': property_type, 'ownership': ownership,
@@ -887,22 +872,22 @@ with tab2:
                     'expected rent increases yearly': expected_rent_increase,
                     'negotiable': negotiable, 'brokerage': brokerage
                 }
-                
+
                 processed_df = preprocess_commercial_input(user_data, feature_names, scaler)
-                
+
                 if processed_df is not None:
                     try:
                         prediction_log = model.predict(processed_df)[0]
                         base_prediction = np.expm1(prediction_log)
-                        
-                        # Calculate floor-adjusted rent
                         adjusted_rent, avg_weightage = calculate_floor_adjusted_rent(base_prediction, floor_numbers)
-                        
+
+                        # Save predictions in session state
                         st.session_state.commercial_base_prediction = base_prediction
                         st.session_state.commercial_adjusted_prediction = adjusted_rent
                         st.session_state.commercial_avg_weightage = avg_weightage
                         st.session_state.commercial_user_data = user_data
                         st.session_state.commercial_processed_df = processed_df
+
                         st.success("Prediction successful! See the results below.")
 
                     except Exception as e:
@@ -912,50 +897,41 @@ with tab2:
         if 'commercial_base_prediction' in st.session_state:
             st.markdown("---")
             st.markdown('<h2>Prediction Results</h2>', unsafe_allow_html=True)
-            
+
             base_prediction = st.session_state.commercial_base_prediction
             adjusted_prediction = st.session_state.commercial_adjusted_prediction
             avg_weightage = st.session_state.commercial_avg_weightage
             user_data = st.session_state.commercial_user_data
-            selected_floors = st.session_state.commercial_selected_floors
-            
+            selected_floors = user_data['floor_no'].split(',')
+
             col1, col2 = st.columns(2)
-            
             with col1:
-                # Base Price Display
+                # Base Price
                 st.markdown('<div class="price-container">', unsafe_allow_html=True)
                 st.markdown('<div class="price-label">Base Rent Price (Ground Floor)</div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="price-value">₹{base_prediction:.2f}</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
-                
-                # Adjusted Price Display
+
+                # Adjusted Price
                 st.markdown('<div class="price-container" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);">', unsafe_allow_html=True)
                 st.markdown('<div class="price-label">Estimated Rent Price (Floor Adjusted)</div>', unsafe_allow_html=True)
                 st.markdown(f'<div class="price-value">₹{adjusted_prediction:.2f}</div>', unsafe_allow_html=True)
-                
-                # Show percentage change
                 if avg_weightage > 0:
                     st.markdown(f'<div class="price-change positive-change">+{avg_weightage:.1f}% Floor Premium</div>', unsafe_allow_html=True)
                 else:
                     st.markdown(f'<div class="price-change">No Floor Premium</div>', unsafe_allow_html=True)
                 st.markdown('</div>', unsafe_allow_html=True)
-                
+
                 st.markdown('<h4>Property Summary</h4>', unsafe_allow_html=True)
                 st.write(f"**Property Type:** {user_data['property_type'].title()}")
                 st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
                 st.write(f"**Area:** {user_data['area'].title()}")
-                # Display selected floors
-                floors_list = user_data['floor_no'].split(',')
-                if len(floors_list) == 1:
-                    st.write(f"**Floor:** Floor {floors_list[0]}")
-                else:
-                    st.write(f"**Floors:** {', '.join([f'Floor {f}' for f in floors_list])}")
-            
+                st.write(f"**Floors:** {', '.join([f'Floor {f}' for f in selected_floors])}")
+
             with col2:
                 st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
                 lower_bound = adjusted_prediction * 0.85
                 upper_bound = adjusted_prediction * 1.15
-                st.write(f"**Fair Range:** ₹{lower_bound:.2f} - ₹{upper_bound:.2f}")
                 comparison_price = st.number_input("Enter Listed Price", min_value=0.0, value=float(adjusted_prediction), step=1000.0, key='commercial_comparison_price')
                 if comparison_price < lower_bound:
                     st.warning("Listed price is **BELOW** fair range.")
@@ -963,47 +939,10 @@ with tab2:
                     st.warning("Listed price is **ABOVE** fair range.")
                 else:
                     st.success("Listed price is **FAIR**.")
-                
+
+                # Future projection
                 st.markdown('<h4>Future Projection</h4>', unsafe_allow_html=True)
                 years = st.slider("Years", min_value=1, max_value=10, value=5, key='commercial_years')
                 growth_rate = st.slider("Growth (%)", min_value=0.0, max_value=15.0, value=5.0, step=0.5, key='commercial_growth_rate')
                 projected_price = adjusted_prediction * ((1 + growth_rate/100) ** years)
                 st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
-                
-                # --- MODIFIED PLOTTING SECTION ---
-                fig, ax = plt.subplots(figsize=(10, 5))
-                years_range = np.arange(0, years + 1)
-                prices = [adjusted_prediction * ((1 + growth_rate/100) ** y) for y in years_range]
-                
-                # Set plot background to white
-                ax.set_facecolor('#FFFFFF')
-                fig.patch.set_facecolor('#FFFFFF')
-                
-                # Plot line with a visible color
-                ax.plot(years_range, prices, marker='o', linestyle='-', color='#1f77b4')
-                
-                # Set all text and grid elements to black
-                ax.set_title(f'Rent Projection ({growth_rate}% Growth)', color='black')
-                ax.set_xlabel('Years', color='black')
-                ax.set_ylabel('Rent Price (₹)', color='black')
-                ax.tick_params(colors='black')
-                ax.grid(True, linestyle='--', color='black', alpha=0.3)
-                
-                st.pyplot(fig)
-                
-                # Floor Impact Analysis
-                st.markdown('<h4>Floor Impact Analysis</h4>', unsafe_allow_html=True)
-                floor_impact_data = []
-                for floor in selected_floors:
-                    floor_num = int(floor.replace("Floor ", ""))
-                    premium = FLOOR_WEIGHTAGE.get(floor_num, 0)
-                    floor_price = base_prediction * (1 + premium / 100)
-                    floor_impact_data.append({
-                        'Floor': floor,
-                        'Premium (%)': premium,
-                        'Price': f"₹{floor_price:.2f}"
-                    })
-                
-                if floor_impact_data:
-                    impact_df = pd.DataFrame(floor_impact_data)
-                    st.dataframe(impact_df, hide_index=True, use_container_width=True)

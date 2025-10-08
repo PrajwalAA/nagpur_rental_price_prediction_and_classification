@@ -468,7 +468,7 @@ def calculate_pg_price_rule_based(pg_data):
     Rule-based PG rent calculation using percentage adjustments
     for sharing type and features.
     """
-    base_price = 2000  # starting rent in ₹
+    base_price = 3500  # starting rent in ₹
 
     # --- Sharing type adjustments as percentages ---
     SHARING_PERCENTAGE = {

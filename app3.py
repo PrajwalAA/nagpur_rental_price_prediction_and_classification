@@ -1331,6 +1331,30 @@ with tab3:
             color: #f87171;
             font-weight: bold;
         }
+        .price-container {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .price-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .price-value {
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .price-change {
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        .positive-change {
+            color: #4ade80;
+        }
+        .negative-change {
+            color: #f87171;
+        }
     </style>
     """, unsafe_allow_html=True)
     
@@ -1344,146 +1368,31 @@ with tab3:
     # Load PG model resources
     pg_model, pg_scaler, pg_features = load_pg_resources()
     
-    # Feature Importance Analysis Section
-    st.header("📊 Feature Importance & Weightage Analysis")
+    # Initialize session state for PG features if not exists
+    if 'pg_features' not in st.session_state:
+        st.session_state.pg_features = {feature: False for feature in PG_FEATURE_IMPORTANCE.keys()}
     
-    # Create tabs for different views
-    pg_tab1, pg_tab2, pg_tab3 = st.tabs(["Feature Analysis", "Price Calculator", "Market Insights"])
-    
-    with pg_tab1:
-        st.subheader("Feature Importance Breakdown")
-        
-        # Display feature importance by category
-        categories = {}
-        for feature, info in PG_FEATURE_IMPORTANCE.items():
-            category = info['category']
-            if category not in categories:
-                categories[category] = []
-            categories[category].append((feature, info))
-        
-        for category, features in categories.items():
-            st.markdown(f"### {category.replace('_', ' ').title()}")
-            
-            # Sort features by importance
-            features.sort(key=lambda x: x[1]['importance'], reverse=True)
-            
-            for feature, info in features:
-                importance_class = "importance-high" if info['importance'] >= 8 else "importance-medium" if info['importance'] >= 6 else "importance-low"
-                weightage_class = "weightage-positive" if info['weightage'] > 0 else "weightage-negative"
-                
-                st.markdown(f"""
-                <div class="feature-card {importance_class}">
-                    <h4>{feature.replace('_', ' ').title()}</h4>
-                    <p><strong>Importance Score:</strong> {info['importance']}/10</p>
-                    <p><strong>Weightage:</strong> <span class="{weightage_class}">{info['weightage']:+.1f}%</span></p>
-                </div>
-                """, unsafe_allow_html=True)
-        
-        # Visual representation of feature importance
-        st.subheader("Visual Feature Analysis")
-        
-        # Create importance chart
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6))
-        
-        # Prepare data for plotting
-        features_list = list(PG_FEATURE_IMPORTANCE.keys())
-        importance_scores = [PG_FEATURE_IMPORTANCE[f]['importance'] for f in features_list]
-        weightages = [PG_FEATURE_IMPORTANCE[f]['weightage'] for f in features_list]
-        
-        # Sort by importance
-        sorted_data = sorted(zip(features_list, importance_scores, weightages), key=lambda x: x[1], reverse=True)
-        sorted_features, sorted_importance, sorted_weightage = zip(*sorted_data)
-        
-        # Plot importance scores
-        bars1 = ax1.barh(range(len(sorted_features)), sorted_importance, color='#667eea')
-        ax1.set_yticks(range(len(sorted_features)))
-        ax1.set_yticklabels([f.replace('_', ' ').title() for f in sorted_features])
-        ax1.set_xlabel('Importance Score (0-10)')
-        ax1.set_title('Feature Importance Ranking')
-        ax1.grid(True, alpha=0.3)
-        
-        # Add value labels on bars
-        for i, bar in enumerate(bars1):
-            width = bar.get_width()
-            ax1.text(width + 0.1, bar.get_y() + bar.get_height()/2, 
-                    f'{sorted_importance[i]:.1f}', ha='left', va='center')
-        
-        # Plot weightages
-        colors = ['#4ade80' if w > 0 else '#f87171' for w in sorted_weightage]
-        bars2 = ax2.barh(range(len(sorted_features)), sorted_weightage, color=colors)
-        ax2.set_yticks(range(len(sorted_features)))
-        ax2.set_yticklabels([f.replace('_', ' ').title() for f in sorted_features])
-        ax2.set_xlabel('Weightage (%)')
-        ax2.set_title('Feature Weightage Impact')
-        ax2.grid(True, alpha=0.3)
-        ax2.axvline(x=0, color='black', linestyle='-', linewidth=0.5)
-        
-        # Add value labels on bars
-        for i, bar in enumerate(bars2):
-            width = bar.get_width()
-            ax2.text(width + (0.1 if width > 0 else -0.1), bar.get_y() + bar.get_height()/2, 
-                    f'{sorted_weightage[i]:+.1f}%', ha='left' if width > 0 else 'right', va='center')
-        
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-        
-        # Category-wise analysis
-        st.subheader("Category-wise Impact Analysis")
-        
-        category_impact = {}
-        for feature, info in PG_FEATURE_IMPORTANCE.items():
-            category = info['category']
-            if category not in category_impact:
-                category_impact[category] = {'total_importance': 0, 'total_weightage': 0, 'count': 0}
-            category_impact[category]['total_importance'] += info['importance']
-            category_impact[category]['total_weightage'] += info['weightage']
-            category_impact[category]['count'] += 1
-        
-        # Create category comparison chart
-        fig, ax = plt.subplots(figsize=(12, 6))
-        
-        cat_names = list(category_impact.keys())
-        avg_importance = [category_impact[cat]['total_importance'] / category_impact[cat]['count'] for cat in cat_names]
-        total_weightage = [category_impact[cat]['total_weightage'] for cat in cat_names]
-        
-        x = np.arange(len(cat_names))
-        width = 0.35
-        
-        bars1 = ax.bar(x - width/2, avg_importance, width, label='Avg Importance', color='#667eea')
-        bars2 = ax.bar(x + width/2, total_weightage, width, label='Total Weightage', color='#764ba2')
-        
-        ax.set_xlabel('Categories')
-        ax.set_ylabel('Values')
-        ax.set_title('Category-wise Impact Comparison')
-        ax.set_xticks(x)
-        ax.set_xticklabels([cat.replace('_', ' ').title() for cat in cat_names], rotation=45)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-    
-    with pg_tab2:
-        st.subheader("PG Price Calculator")
-        
+    # Create form for PG input
+    with st.form("pg_prediction_form"):
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("### Basic Information")
-            
+            st.header("PG Details")
             pg_name = st.text_input("PG Name", key='pg_name')
             area = st.selectbox("Area", ['dharampeth', 'ramdaspeth', 'civil_lines', 'sadar', 'sitabuldi', 
                                       'manewada', 'jaitala', 'besa', 'hingna', 'kamptee', 'kalmeshwar'], 
                                      key='pg_area')
             sharing = st.selectbox("Sharing Type", ['private', 'double', 'triple', 'quad'], key='pg_sharing')
             
-            st.markdown("### Select Features")
+            # Display feature importance by category
+            categories = {}
+            for feature, info in PG_FEATURE_IMPORTANCE.items():
+                category = info['category']
+                if category not in categories:
+                    categories[category] = []
+                categories[category].append((feature, info))
             
-            # Initialize feature selection state
-            if 'pg_features' not in st.session_state:
-                st.session_state.pg_features = {feature: False for feature in PG_FEATURE_IMPORTANCE.keys()}
+            st.subheader("Select Features")
             
             # Group features by category for better organization
             for category, features in categories.items():
@@ -1498,192 +1407,290 @@ with tab3:
                         )
         
         with col2:
-            st.markdown("### Pricing Analysis")
+            st.header("Pricing Analysis")
             
-            # Calculate price based on selected features
+            # Display selected features summary
             selected_features = {k: v for k, v in st.session_state.pg_features.items() if v}
+            st.write(f"**Selected Features:** {len(selected_features)}")
             
-            if st.button("Calculate PG Price", key='calculate_pg_price'):
-                pg_data = {
-                    'pg_name': pg_name,
-                    'area': area,
-                    'sharing': sharing,
-                    **selected_features
-                }
+            # Show top selected features
+            if selected_features:
+                st.write("**Top Selected Features:**")
+                top_selected = sorted(
+                    [(f, PG_FEATURE_IMPORTANCE[f]) for f in selected_features.keys()],
+                    key=lambda x: x[1]['importance'], reverse=True
+                )[:5]
                 
-                # Calculate price using rule-based approach
-                calculated_price = calculate_pg_price_rule_based(pg_data)
-                
-                # Store results in session state
-                st.session_state.pg_calculated_price = calculated_price
-                st.session_state.pg_analysis_data = pg_data
+                for feature, info in top_selected:
+                    st.write(f"- {feature.replace('_', ' ').title()}: {info['importance']}/10 ({info['weightage']:+.1f}%)")
             
-            # Display results if calculated
-            if 'pg_calculated_price' in st.session_state:
-                calculated_price = st.session_state.pg_calculated_price
-                pg_data = st.session_state.pg_analysis_data
-                
-                # Display price
-                st.markdown(f"""
-                <div class="metric-box">
-                    <h3>Estimated Monthly Rent</h3>
-                    <h2>₹{calculated_price:,.2f}</h2>
-                    <p>Based on selected features and location</p>
-                </div>
-                """, unsafe_allow_html=True)
-                
-                # Price range
-                lower_bound = calculated_price * 0.85
-                upper_bound = calculated_price * 1.15
-                
-                st.write(f"**Fair Price Range:** ₹{lower_bound:,.2f} - ₹{upper_bound:,.2f}")
-                
-                # Feature breakdown
-                st.markdown("### Feature Impact Breakdown")
-                
-                total_positive = 0
-                total_negative = 0
-                
-                for feature, is_selected in selected_features.items():
-                    if is_selected:
-                        weightage = PG_FEATURE_IMPORTANCE[feature]['weightage']
-                        if weightage > 0:
-                            total_positive += weightage
-                        else:
-                            total_negative += weightage
-                
-                col_impact1, col_impact2 = st.columns(2)
-                with col_impact1:
-                    st.metric("Positive Impact", f"+{total_positive:.1f}%")
-                with col_impact2:
-                    st.metric("Negative Impact", f"{total_negative:.1f}%")
-                
-                # Selected features list
-                st.markdown("### Selected Features")
-                selected_list = []
-                for feature, is_selected in selected_features.items():
-                    if is_selected:
-                        info = PG_FEATURE_IMPORTANCE[feature]
-                        selected_list.append({
-                            'Feature': feature.replace('_', ' ').title(),
-                            'Importance': f"{info['importance']}/10",
-                            'Weightage': f"{info['weightage']:+.1f}%"
-                        })
-                
-                if selected_list:
-                    df_selected = pd.DataFrame(selected_list)
-                    st.dataframe(df_selected, hide_index=True, use_container_width=True)
+            # Projection inputs
+            st.markdown("---")
+            st.subheader("Future PG Rate Projection")
+            projection_years = st.slider("Years from now to project:", min_value=1, max_value=10, value=3, key='pg_projection_years')
+            annual_growth_rate = st.slider("Expected Annual Growth Rate (%):", min_value=0.0, max_value=15.0, value=5.0, step=0.1, key='pg_annual_growth_rate')
+            listed_price = st.number_input("Enter the Listed Price for comparison:", min_value=0, value=5000, key='pg_listed_price_comp')
+            
+            # Submit button
+            predict_button = st.form_submit_button("Predict PG Price", width='stretch')
     
-    with pg_tab3:
-        st.subheader("Market Insights & Trends")
+    # Prediction Results Section
+    if predict_button:
+        # Get selected features
+        selected_features = {k: v for k, v in st.session_state.pg_features.items() if v}
         
-        # Market overview metrics
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Avg Private Room", "₹8,500", "+5.2%")
-        with col2:
-            st.metric("Avg Double Sharing", "₹6,200", "+3.8%")
-        with col3:
-            st.metric("Avg Triple Sharing", "₹4,500", "+2.1%")
-        with col4:
-            st.metric("Avg Quad Sharing", "₹3,200", "+1.5%")
-        
-        # Location-wise price comparison
-        st.markdown("### Location-wise Price Comparison")
-        
-        location_data = {
-            'Area': ['Dharampeth', 'Ramdaspeth', 'Civil Lines', 'Sadar', 'Sitabuldi', 
-                     'Manewada', 'Jaitala', 'Besa', 'Hingna', 'Kamptee'],
-            'Private': [12000, 11000, 11500, 10000, 9500, 8500, 8000, 7500, 7000, 6500],
-            'Double': [8500, 8000, 8200, 7500, 7000, 6500, 6000, 5800, 5500, 5000],
-            'Triple': [6000, 5800, 5900, 5500, 5200, 4800, 4500, 4300, 4000, 3800],
-            'Quad': [4500, 4300, 4400, 4000, 3800, 3500, 3300, 3000, 2800, 2600]
+        # Prepare PG data
+        pg_data = {
+            'pg_name': pg_name,
+            'area': area,
+            'sharing': sharing,
+            **selected_features
         }
         
-        df_location = pd.DataFrame(location_data)
+        # Calculate price using rule-based approach
+        calculated_price = calculate_pg_price_rule_based(pg_data)
         
-        # Create location comparison chart
-        fig, ax = plt.subplots(figsize=(14, 7))
+        # Store results in session state
+        st.session_state.pg_calculated_price = calculated_price
+        st.session_state.pg_analysis_data = pg_data
+        st.session_state.pg_projection_years = projection_years
+        st.session_state.pg_annual_growth_rate = annual_growth_rate
+        st.session_state.pg_listed_price = listed_price
+    
+    # Display results if calculated
+    if 'pg_calculated_price' in st.session_state:
+        st.markdown("---")
+        st.subheader("Prediction Results")
         
-        x = np.arange(len(df_location['Area']))
-        width = 0.2
-        
-        ax.bar(x - 1.5*width, df_location['Private'], width, label='Private', color='#667eea')
-        ax.bar(x - 0.5*width, df_location['Double'], width, label='Double', color='#764ba2')
-        ax.bar(x + 0.5*width, df_location['Triple'], width, label='Triple', color='#f59e0b')
-        ax.bar(x + 1.5*width, df_location['Quad'], width, label='Quad', color='#10b981')
-        
-        ax.set_xlabel('Areas')
-        ax.set_ylabel('Average Rent (₹)')
-        ax.set_title('Location-wise PG Price Comparison')
-        ax.set_xticks(x)
-        ax.set_xticklabels(df_location['Area'], rotation=45)
-        ax.legend()
-        ax.grid(True, alpha=0.3)
-        
-        plt.tight_layout()
-        st.pyplot(fig)
-        plt.close(fig)
-        
-        # Feature demand analysis
-        st.markdown("### Most Demanded Features")
-        
-        # Sort features by importance
-        top_features = sorted(PG_FEATURE_IMPORTANCE.items(), key=lambda x: x[1]['importance'], reverse=True)[:10]
+        calculated_price = st.session_state.pg_calculated_price
+        pg_data = st.session_state.pg_analysis_data
+        projection_years = st.session_state.pg_projection_years
+        annual_growth_rate = st.session_state.pg_annual_growth_rate
+        listed_price = st.session_state.pg_listed_price
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.markdown("**Top 10 Most Important Features**")
-            for i, (feature, info) in enumerate(top_features, 1):
-                st.write(f"{i}. {feature.replace('_', ' ').title()} - {info['importance']}/10")
+            # Base Price Display
+            st.markdown('<div class="price-container">', unsafe_allow_html=True)
+            st.markdown('<div class="price-label">Estimated Monthly Rent</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-value">₹{calculated_price:.2f}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            # PG Summary
+            st.markdown('<h4>PG Summary</h4>', unsafe_allow_html=True)
+            st.write(f"**PG Name:** {pg_data.get('pg_name', 'N/A')}")
+            st.write(f"**Area:** {pg_data.get('area', 'N/A').title()}")
+            st.write(f"**Sharing Type:** {pg_data.get('sharing', 'N/A').title()}")
+            
+            # Feature breakdown
+            st.markdown('<h4>Feature Impact Breakdown</h4>', unsafe_allow_html=True)
+            
+            total_positive = 0
+            total_negative = 0
+            
+            selected_features = {k: v for k, v in pg_data.items() if k in PG_FEATURE_IMPORTANCE and v}
+            
+            for feature, is_selected in selected_features.items():
+                if is_selected:
+                    weightage = PG_FEATURE_IMPORTANCE[feature]['weightage']
+                    if weightage > 0:
+                        total_positive += weightage
+                    else:
+                        total_negative += weightage
+            
+            col_impact1, col_impact2 = st.columns(2)
+            with col_impact1:
+                st.metric("Positive Impact", f"+{total_positive:.1f}%")
+            with col_impact2:
+                st.metric("Negative Impact", f"{total_negative:.1f}%")
+            
+            # Selected features list
+            st.markdown('<h4>Selected Features</h4>', unsafe_allow_html=True)
+            selected_list = []
+            for feature, is_selected in selected_features.items():
+                if is_selected:
+                    info = PG_FEATURE_IMPORTANCE[feature]
+                    selected_list.append({
+                        'Feature': feature.replace('_', ' ').title(),
+                        'Importance': f"{info['importance']}/10",
+                        'Weightage': f"{info['weightage']:+.1f}%"
+                    })
+            
+            if selected_list:
+                df_selected = pd.DataFrame(selected_list)
+                st.dataframe(df_selected, hide_index=True, use_container_width=True)
         
         with col2:
-            st.markdown("**Highest Positive Impact Features**")
-            positive_features = sorted(
-                [(f, i) for f, i in PG_FEATURE_IMPORTANCE.items() if i['weightage'] > 0],
-                key=lambda x: x[1]['weightage'], reverse=True
-            )[:5]
+            # Price comparison
+            st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
+            lower_bound = calculated_price * 0.85
+            upper_bound = calculated_price * 1.15
+            st.write(f"**Fair Range:** ₹{lower_bound:.2f} - ₹{upper_bound:.2f}")
             
-            for feature, info in positive_features:
-                st.write(f"• {feature.replace('_', ' ').title()} - +{info['weightage']:.1f}%")
-        
-        # Recommendations
-        st.markdown("### Recommendations for PG Owners")
-        
-        recommendations = [
-            "Focus on high-importance features like WiFi, Security, and Water Purifier",
-            "AC in rooms can increase rent by up to 25%",
-            "Attached bathrooms are highly valued (+20% weightage)",
-            "Gated communities and proper security significantly impact pricing",
-            "Location plays a crucial role - prime areas command 30-40% premium",
-            "Meals included can add 8% to the base price",
-            "Restrictive policies (drinking/smoking) negatively impact pricing"
-        ]
-        
-        for i, rec in enumerate(recommendations, 1):
-            st.write(f"{i}. {rec}")
-        
-        # Export functionality
-        st.markdown("### Export Analysis")
-        
-        if st.button("Generate PG Analysis Report"):
-            # Create a comprehensive report
-            report_data = {
-                'Feature': list(PG_FEATURE_IMPORTANCE.keys()),
-                'Importance_Score': [PG_FEATURE_IMPORTANCE[f]['importance'] for f in PG_FEATURE_IMPORTANCE.keys()],
-                'Weightage_Percent': [PG_FEATURE_IMPORTANCE[f]['weightage'] for f in PG_FEATURE_IMPORTANCE.keys()],
-                'Category': [PG_FEATURE_IMPORTANCE[f]['category'] for f in PG_FEATURE_IMPORTANCE.keys()]
-            }
+            if listed_price < lower_bound:
+                st.warning("Listed price is **BELOW** fair range.")
+            elif listed_price > upper_bound:
+                st.warning("Listed price is **ABOVE** fair range.")
+            else:
+                st.success("Listed price is **FAIR**.")
             
-            df_report = pd.DataFrame(report_data)
+            # Future projection
+            st.markdown('<h4>Future Projection</h4>', unsafe_allow_html=True)
+            future_pred = calculated_price * ((1 + annual_growth_rate / 100.0) ** projection_years)
+            st.write(f"**Rent in {projection_years} years:** ₹{future_pred:.2f}")
             
-            # Convert to CSV for download
-            csv = df_report.to_csv(index=False)
-            st.download_button(
-                label="Download PG Analysis Report (CSV)",
-                data=csv,
-                file_name="pg_feature_analysis.csv",
-                mime="text/csv"
-            )
+            # --- Plotting Section ---
+            fig, ax = plt.subplots(figsize=(10, 5))
+            years_range = np.arange(0, projection_years + 1)
+            prices = [calculated_price * ((1 + annual_growth_rate / 100.0) ** y) for y in years_range]
+            
+            # Set plot background to white
+            ax.set_facecolor('#FFFFFF')
+            fig.patch.set_facecolor('#FFFFFF')
+            
+            # Plot line with a visible color
+            ax.plot(years_range, prices, marker='o', linestyle='-', color='#1f77b4')
+            
+            # Set all text and grid elements to black
+            ax.set_title(f'PG Rent Projection ({annual_growth_rate}% Growth)', color='black')
+            ax.set_xlabel('Years', color='black')
+            ax.set_ylabel('Rent Price (₹)', color='black')
+            ax.tick_params(colors='black')
+            ax.grid(True, linestyle='--', color='black', alpha=0.3)
+            
+            st.pyplot(fig)
+            
+            # Feature Impact Analysis
+            st.markdown('<h4>Feature Impact Analysis</h4>', unsafe_allow_html=True)
+            
+            # Create a dataframe of all features with their impact
+            all_features_data = []
+            for feature, info in PG_FEATURE_IMPORTANCE.items():
+                is_selected = selected_features.get(feature, False)
+                impact = info['weightage'] if is_selected else 0
+                all_features_data.append({
+                    'Feature': feature.replace('_', ' ').title(),
+                    'Importance': info['importance'],
+                    'Weightage': info['weightage'],
+                    'Selected': 'Yes' if is_selected else 'No',
+                    'Impact': f"{impact:+.1f}%" if is_selected else "0.0%"
+                })
+            
+            df_all_features = pd.DataFrame(all_features_data)
+            st.dataframe(df_all_features, hide_index=True, use_container_width=True)
+    
+    # Additional Analysis Section
+    st.markdown("---")
+    st.subheader("Market Insights & Trends")
+    
+    # Market overview metrics
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.metric("Avg Private Room", "₹8,500", "+5.2%")
+    with col2:
+        st.metric("Avg Double Sharing", "₹6,200", "+3.8%")
+    with col3:
+        st.metric("Avg Triple Sharing", "₹4,500", "+2.1%")
+    with col4:
+        st.metric("Avg Quad Sharing", "₹3,200", "+1.5%")
+    
+    # Location-wise price comparison
+    st.markdown("### Location-wise Price Comparison")
+    
+    location_data = {
+        'Area': ['Dharampeth', 'Ramdaspeth', 'Civil Lines', 'Sadar', 'Sitabuldi', 
+                 'Manewada', 'Jaitala', 'Besa', 'Hingna', 'Kamptee'],
+        'Private': [12000, 11000, 11500, 10000, 9500, 8500, 8000, 7500, 7000, 6500],
+        'Double': [8500, 8000, 8200, 7500, 7000, 6500, 6000, 5800, 5500, 5000],
+        'Triple': [6000, 5800, 5900, 5500, 5200, 4800, 4500, 4300, 4000, 3800],
+        'Quad': [4500, 4300, 4400, 4000, 3800, 3500, 3300, 3000, 2800, 2600]
+    }
+    
+    df_location = pd.DataFrame(location_data)
+    
+    # Create location comparison chart
+    fig, ax = plt.subplots(figsize=(14, 7))
+    
+    x = np.arange(len(df_location['Area']))
+    width = 0.2
+    
+    ax.bar(x - 1.5*width, df_location['Private'], width, label='Private', color='#667eea')
+    ax.bar(x - 0.5*width, df_location['Double'], width, label='Double', color='#764ba2')
+    ax.bar(x + 0.5*width, df_location['Triple'], width, label='Triple', color='#f59e0b')
+    ax.bar(x + 1.5*width, df_location['Quad'], width, label='Quad', color='#10b981')
+    
+    ax.set_xlabel('Areas')
+    ax.set_ylabel('Average Rent (₹)')
+    ax.set_title('Location-wise PG Price Comparison')
+    ax.set_xticks(x)
+    ax.set_xticklabels(df_location['Area'], rotation=45)
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
+    
+    # Feature demand analysis
+    st.markdown("### Most Demanded Features")
+    
+    # Sort features by importance
+    top_features = sorted(PG_FEATURE_IMPORTANCE.items(), key=lambda x: x[1]['importance'], reverse=True)[:10]
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.markdown("**Top 10 Most Important Features**")
+        for i, (feature, info) in enumerate(top_features, 1):
+            st.write(f"{i}. {feature.replace('_', ' ').title()} - {info['importance']}/10")
+    
+    with col2:
+        st.markdown("**Highest Positive Impact Features**")
+        positive_features = sorted(
+            [(f, i) for f, i in PG_FEATURE_IMPORTANCE.items() if i['weightage'] > 0],
+            key=lambda x: x[1]['weightage'], reverse=True
+        )[:5]
+        
+        for feature, info in positive_features:
+            st.write(f"• {feature.replace('_', ' ').title()} - +{info['weightage']:.1f}%")
+    
+    # Recommendations
+    st.markdown("### Recommendations for PG Owners")
+    
+    recommendations = [
+        "Focus on high-importance features like WiFi, Security, and Water Purifier",
+        "AC in rooms can increase rent by up to 25%",
+        "Attached bathrooms are highly valued (+20% weightage)",
+        "Gated communities and proper security significantly impact pricing",
+        "Location plays a crucial role - prime areas command 30-40% premium",
+        "Meals included can add 8% to the base price",
+        "Restrictive policies (drinking/smoking) negatively impact pricing"
+    ]
+    
+    for i, rec in enumerate(recommendations, 1):
+        st.write(f"{i}. {rec}")
+    
+    # Export functionality
+    st.markdown("### Export Analysis")
+    
+    if st.button("Generate PG Analysis Report"):
+        # Create a comprehensive report
+        report_data = {
+            'Feature': list(PG_FEATURE_IMPORTANCE.keys()),
+            'Importance_Score': [PG_FEATURE_IMPORTANCE[f]['importance'] for f in PG_FEATURE_IMPORTANCE.keys()],
+            'Weightage_Percent': [PG_FEATURE_IMPORTANCE[f]['weightage'] for f in PG_FEATURE_IMPORTANCE.keys()],
+            'Category': [PG_FEATURE_IMPORTANCE[f]['category'] for f in PG_FEATURE_IMPORTANCE.keys()]
+        }
+        
+        df_report = pd.DataFrame(report_data)
+        
+        # Convert to CSV for download
+        csv = df_report.to_csv(index=False)
+        st.download_button(
+            label="Download PG Analysis Report (CSV)",
+            data=csv,
+            file_name="pg_feature_analysis.csv",
+            mime="text/csv"
+        )

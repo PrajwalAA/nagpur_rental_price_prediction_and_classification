@@ -949,6 +949,7 @@ with tab2:
 
 
 # Tab 3: PG Accommodation Analysis
+# Tab 3: PG Accommodation Analysis
 with tab3:
     st.markdown("""
     <style>
@@ -999,9 +1000,6 @@ with tab3:
         <p>Comprehensive analysis of PG features, importance, and pricing with weightage system</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    # Load PG model resources
-    pg_model, pg_scaler, pg_features = load_pg_resources()
     
     # Initialize session state for PG features if not exists
     if 'pg_features' not in st.session_state:
@@ -1061,12 +1059,12 @@ with tab3:
             
             predict_button = st.form_submit_button("Predict PG Price")
     
-    # Prediction Results Section
+    # Prediction Results Section (Rule-based only)
     if predict_button:
         selected_features = {k: v for k, v in st.session_state.pg_features.items() if v}
         pg_data = {'pg_name': pg_name, 'area': area, 'sharing': sharing, **selected_features}
         
-        calculated_price = calculate_pg_price_rule_based(pg_data)
+        calculated_price = calculate_pg_price_rule_based(pg_data)  # ✅ No ML model, only rule-based
         
         st.session_state.pg_calculated_price = calculated_price
         st.session_state.pg_analysis_data = pg_data
@@ -1162,8 +1160,3 @@ with tab3:
                 for f, i in PG_FEATURE_IMPORTANCE.items()
             ])
             st.dataframe(df_all, hide_index=True, use_container_width=True)
-    
-    # --- Additional Insights (unchanged from your version) ---
-    # Market Insights & Trends ...
-    # (rest of your code stays same)
-

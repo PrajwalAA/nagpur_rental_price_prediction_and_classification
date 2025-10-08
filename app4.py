@@ -1012,7 +1012,7 @@ with tab3:
 
     st.markdown("""
     <div class="pg-header">
-        <h1>🏠 PG Accommodation Analysis</h1>
+        <h1>🏠 PG Price Prediction </h1>
         <p>Rule-based analysis of PG features, importance, and pricing</p>
     </div>
     """, unsafe_allow_html=True)

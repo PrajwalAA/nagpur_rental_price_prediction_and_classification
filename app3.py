@@ -1647,7 +1647,7 @@ with tab3:
             )[:5]
             
             for feature, info in positive_features:
-                st.write(f"• {feature.replace('_', ' ').title')} - +{info['weightage']:.1f}%")
+                st.write(f"• {feature.replace('_', ' ').title()} - +{info['weightage']:.1f}%")
         
         # Recommendations
         st.markdown("### Recommendations for PG Owners")

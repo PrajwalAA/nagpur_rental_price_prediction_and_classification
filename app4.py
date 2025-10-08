@@ -843,6 +843,54 @@ with tab2:
             weightage_df['Floor'] = weightage_df['Floor'].apply(lambda x: f"Floor {x}")
             st.dataframe(weightage_df, hide_index=True, use_container_width=True)
         
+        # Initialize session state for domains if not exists
+        if 'commercial_domains' not in st.session_state:
+            st.session_state.commercial_domains = [
+                {'domain': 'Ground Floor', 'size': 0, 'carpet': 0}
+            ]
+        
+        # Maximum size limit
+        MAX_SIZE_LIMIT = 100000  # 100,000 sqft
+        
+        # Function to add new domain
+        def add_domain():
+            if len(st.session_state.commercial_domains) < 10:  # Limit to 10 domains
+                st.session_state.commercial_domains.append({
+                    'domain': f'Domain {len(st.session_state.commercial_domains) + 1}',
+                    'size': 0,
+                    'carpet': 0
+                })
+        
+        # Function to remove domain
+        def remove_domain(index):
+            if len(st.session_state.commercial_domains) > 1:
+                st.session_state.commercial_domains.pop(index)
+                # Renumber domains
+                for i, domain in enumerate(st.session_state.commercial_domains):
+                    if i == 0:
+                        domain['domain'] = 'Ground Floor'
+                    else:
+                        domain['domain'] = f'Domain {i}'
+        
+        # Function to calculate total size
+        def calculate_total_size():
+            total_size = sum(domain['size'] for domain in st.session_state.commercial_domains)
+            total_carpet = sum(domain['carpet'] for domain in st.session_state.commercial_domains)
+            return total_size, total_carpet
+        
+        # Add/Remove domain buttons outside the form
+        col_add, col_remove = st.columns([1, 1])
+        with col_add:
+            add_domain_clicked = st.button("➕ Add Domain", width='stretch')
+        with col_remove:
+            remove_domain_clicked = st.button("➖ Remove Last Domain", width='stretch')
+        
+        # Handle button clicks
+        if add_domain_clicked:
+            add_domain()
+        if remove_domain_clicked and len(st.session_state.commercial_domains) > 1:
+            remove_domain(len(st.session_state.commercial_domains)-1)
+        
         with st.form("commercial_prediction_form"):
             # --- Compact Input Grid ---
             col1, col2, col3 = st.columns(3)
@@ -862,49 +910,6 @@ with tab2:
             # --- Combined Domain/Size Input Section ---
             st.markdown("---")
             st.subheader("Property Size Configuration")
-            
-            # Initialize session state for domains if not exists
-            if 'commercial_domains' not in st.session_state:
-                st.session_state.commercial_domains = [
-                    {'domain': 'Ground Floor', 'size': 0, 'carpet': 0}
-                ]
-            
-            # Maximum size limit
-            MAX_SIZE_LIMIT = 100000  # 100,000 sqft
-            
-            # Function to add new domain
-            def add_domain():
-                if len(st.session_state.commercial_domains) < 10:  # Limit to 10 domains
-                    st.session_state.commercial_domains.append({
-                        'domain': f'Domain {len(st.session_state.commercial_domains) + 1}',
-                        'size': 0,
-                        'carpet': 0
-                    })
-            
-            # Function to remove domain
-            def remove_domain(index):
-                if len(st.session_state.commercial_domains) > 1:
-                    st.session_state.commercial_domains.pop(index)
-                    # Renumber domains
-                    for i, domain in enumerate(st.session_state.commercial_domains):
-                        if i == 0:
-                            domain['domain'] = 'Ground Floor'
-                        else:
-                            domain['domain'] = f'Domain {i}'
-            
-            # Function to calculate total size
-            def calculate_total_size():
-                total_size = sum(domain['size'] for domain in st.session_state.commercial_domains)
-                total_carpet = sum(domain['carpet'] for domain in st.session_state.commercial_domains)
-                return total_size, total_carpet
-            
-            # Add/Remove domain buttons
-            col_add, col_remove = st.columns([1, 1])
-            with col_add:
-                st.button("➕ Add Domain", on_click=add_domain, use_container_width=True)
-            with col_remove:
-                if len(st.session_state.commercial_domains) > 1:
-                    st.button("➖ Remove Last Domain", on_click=lambda: remove_domain(len(st.session_state.commercial_domains)-1), use_container_width=True)
             
             # Display domain inputs
             total_size, total_carpet = calculate_total_size()
@@ -940,13 +945,17 @@ with tab2:
                         st.session_state.commercial_domains[i]['carpet'] = new_carpet
                     with col_d3:
                         if len(st.session_state.commercial_domains) > 1:
-                            st.button(
-                                "🗑️",
-                                key=f'remove_{i}',
-                                on_click=lambda idx=i: remove_domain(idx),
-                                help="Remove this domain"
+                            # Use a selectbox to trigger removal instead of a button with callback
+                            remove_this = st.selectbox(
+                                "Action",
+                                ["Keep", "Remove"],
+                                key=f'remove_select_{i}',
+                                help="Select 'Remove' to delete this domain"
                             )
-            
+                            if remove_this == "Remove":
+                                remove_domain(i)
+                                st.rerun()
+
             # Calculate and display total size with validation
             total_size, total_carpet = calculate_total_size()
             
@@ -1009,7 +1018,7 @@ with tab2:
                 brokerage = st.selectbox("Brokerage", ['yes', 'no'], index=0, key='commercial_brokerage')
             
             # --- Submit Button ---
-            predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True, disabled=(total_size == 0 or total_size > MAX_SIZE_LIMIT))
+            predict_button = st.form_submit_button("Predict Rent Price", width='stretch', disabled=(total_size == 0 or total_size > MAX_SIZE_LIMIT))
             
             if predict_button:
                 # Process the selected floors from multiselect

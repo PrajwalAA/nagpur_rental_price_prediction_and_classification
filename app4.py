@@ -452,7 +452,7 @@ def validate_property_details(data_dict: Dict[str, Any]) -> List[str]:
 st.title("Property Price Prediction App")
 
 # Create tabs
-tab1, tab2 = st.tabs(["Rental Price Prediction", "Commercial Price Prediction"])
+tab1, tab2, tab3 = st.tabs(["Rental Price Prediction", "Commercial Price Prediction", "PG Price Prediction"])
 
 # Tab 1: Rental Price Prediction
 with tab1:
@@ -946,3 +946,224 @@ with tab2:
                 growth_rate = st.slider("Growth (%)", min_value=0.0, max_value=15.0, value=5.0, step=0.5, key='commercial_growth_rate')
                 projected_price = adjusted_prediction * ((1 + growth_rate/100) ** years)
                 st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
+
+
+# Tab 3: PG Accommodation Analysis
+with tab3:
+    st.markdown("""
+    <style>
+        .pg-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        .feature-card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 10px 0;
+        }
+        .importance-high { border-left: 5px solid #ef4444; }
+        .importance-medium { border-left: 5px solid #f59e0b; }
+        .importance-low { border-left: 5px solid #10b981; }
+        .metric-box {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: white;
+        }
+        .weightage-positive { color: #4ade80; font-weight: bold; }
+        .weightage-negative { color: #f87171; font-weight: bold; }
+        .price-container {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        .price-label { font-size: 14px; opacity: 0.9; }
+        .price-value { font-size: 28px; font-weight: bold; }
+        .price-change { font-size: 16px; margin-top: 5px; }
+        .positive-change { color: #4ade80; }
+        .negative-change { color: #f87171; }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("""
+    <div class="pg-header">
+        <h1>🏠 PG Accommodation Analysis</h1>
+        <p>Comprehensive analysis of PG features, importance, and pricing with weightage system</p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Load PG model resources
+    pg_model, pg_scaler, pg_features = load_pg_resources()
+    
+    # Initialize session state for PG features if not exists
+    if 'pg_features' not in st.session_state:
+        st.session_state.pg_features = {feature: False for feature in PG_FEATURE_IMPORTANCE.keys()}
+    
+    # Create form for PG input
+    with st.form("pg_prediction_form"):
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.header("PG Details")
+            pg_name = st.text_input("PG Name", key='pg_name')
+            area = st.selectbox("Area", 
+                ['dharampeth', 'ramdaspeth', 'civil_lines', 'sadar', 'sitabuldi', 
+                 'manewada', 'jaitala', 'besa', 'hingna', 'kamptee', 'kalmeshwar'], 
+                 key='pg_area')
+            sharing = st.selectbox("Sharing Type", ['private', 'double', 'triple', 'quad'], key='pg_sharing')
+            
+            # Display feature importance by category
+            categories = {}
+            for feature, info in PG_FEATURE_IMPORTANCE.items():
+                categories.setdefault(info['category'], []).append((feature, info))
+            
+            st.subheader("Select Features")
+            
+            for category, features in categories.items():
+                with st.expander(f"{category.replace('_', ' ').title()}"):
+                    for feature, info in features:
+                        feature_name = feature.replace('_', ' ').title()
+                        weightage_text = f"({info['weightage']:+.1f}%)"
+                        st.session_state.pg_features[feature] = st.checkbox(
+                            f"{feature_name} {weightage_text}", 
+                            key=f'pg_feature_{feature}',
+                            value=st.session_state.pg_features.get(feature, False)
+                        )
+        
+        with col2:
+            st.header("Pricing Analysis")
+            
+            selected_features = {k: v for k, v in st.session_state.pg_features.items() if v}
+            st.write(f"**Selected Features:** {len(selected_features)}")
+            
+            if selected_features:
+                st.write("**Top Selected Features:**")
+                top_selected = sorted(
+                    [(f, PG_FEATURE_IMPORTANCE[f]) for f in selected_features.keys()],
+                    key=lambda x: x[1]['importance'], reverse=True
+                )[:5]
+                for feature, info in top_selected:
+                    st.write(f"- {feature.replace('_', ' ').title()}: {info['importance']}/10 ({info['weightage']:+.1f}%)")
+            
+            st.markdown("---")
+            st.subheader("Future PG Rate Projection")
+            projection_years = st.slider("Years from now to project:", 1, 10, 3, key='pg_projection_years')
+            annual_growth_rate = st.slider("Expected Annual Growth Rate (%):", 0.0, 15.0, 5.0, 0.1, key='pg_annual_growth_rate')
+            listed_price = st.number_input("Enter the Listed Price for comparison:", 0, 5000, key='pg_listed_price')
+            
+            predict_button = st.form_submit_button("Predict PG Price")
+    
+    # Prediction Results Section
+    if predict_button:
+        selected_features = {k: v for k, v in st.session_state.pg_features.items() if v}
+        pg_data = {'pg_name': pg_name, 'area': area, 'sharing': sharing, **selected_features}
+        
+        calculated_price = calculate_pg_price_rule_based(pg_data)
+        
+        st.session_state.pg_calculated_price = calculated_price
+        st.session_state.pg_analysis_data = pg_data
+    
+    # Display results
+    if 'pg_calculated_price' in st.session_state:
+        st.markdown("---")
+        st.subheader("Prediction Results")
+        
+        calculated_price = st.session_state.pg_calculated_price
+        pg_data = st.session_state.pg_analysis_data
+        projection_years = st.session_state.pg_projection_years
+        annual_growth_rate = st.session_state.pg_annual_growth_rate
+        listed_price = st.session_state.pg_listed_price
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown('<div class="price-container">', unsafe_allow_html=True)
+            st.markdown('<div class="price-label">Estimated Monthly Rent</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="price-value">₹{calculated_price:.2f}</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown('<h4>PG Summary</h4>', unsafe_allow_html=True)
+            st.write(f"**PG Name:** {pg_data.get('pg_name', 'N/A')}")
+            st.write(f"**Area:** {pg_data.get('area', 'N/A').title()}")
+            st.write(f"**Sharing Type:** {pg_data.get('sharing', 'N/A').title()}")
+            
+            st.markdown('<h4>Feature Impact Breakdown</h4>', unsafe_allow_html=True)
+            
+            total_positive, total_negative = 0, 0
+            selected_features = {k: v for k, v in pg_data.items() if k in PG_FEATURE_IMPORTANCE and v}
+            
+            for feature, is_selected in selected_features.items():
+                if is_selected:
+                    w = PG_FEATURE_IMPORTANCE[feature]['weightage']
+                    total_positive += w if w > 0 else 0
+                    total_negative += w if w < 0 else 0
+            
+            c1, c2 = st.columns(2)
+            with c1: st.metric("Positive Impact", f"+{total_positive:.1f}%")
+            with c2: st.metric("Negative Impact", f"{total_negative:.1f}%")
+            
+            st.markdown('<h4>Selected Features</h4>', unsafe_allow_html=True)
+            if selected_features:
+                df_selected = pd.DataFrame([
+                    {
+                        'Feature': f.replace('_', ' ').title(),
+                        'Importance': f"{PG_FEATURE_IMPORTANCE[f]['importance']}/10",
+                        'Weightage': f"{PG_FEATURE_IMPORTANCE[f]['weightage']:+.1f}%"
+                    }
+                    for f in selected_features if selected_features[f]
+                ])
+                st.dataframe(df_selected, hide_index=True, use_container_width=True)
+        
+        with col2:
+            st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
+            lb, ub = calculated_price * 0.85, calculated_price * 1.15
+            st.write(f"**Fair Range:** ₹{lb:.2f} - ₹{ub:.2f}")
+            if listed_price < lb:
+                st.warning("Listed price is **BELOW** fair range.")
+            elif listed_price > ub:
+                st.warning("Listed price is **ABOVE** fair range.")
+            else:
+                st.success("Listed price is **FAIR**.")
+            
+            st.markdown('<h4>Future Projection</h4>', unsafe_allow_html=True)
+            future_pred = calculated_price * ((1 + annual_growth_rate / 100.0) ** projection_years)
+            st.write(f"**Rent in {projection_years} years:** ₹{future_pred:.2f}")
+            
+            fig, ax = plt.subplots(figsize=(10, 5))
+            yrs = np.arange(0, projection_years + 1)
+            prices = [calculated_price * ((1 + annual_growth_rate / 100.0) ** y) for y in yrs]
+            ax.set_facecolor('#FFFFFF')
+            fig.patch.set_facecolor('#FFFFFF')
+            ax.plot(yrs, prices, marker='o', linestyle='-', color='#1f77b4')
+            ax.set_title(f'PG Rent Projection ({annual_growth_rate}% Growth)', color='black')
+            ax.set_xlabel('Years', color='black')
+            ax.set_ylabel('Rent Price (₹)', color='black')
+            ax.tick_params(colors='black')
+            ax.grid(True, linestyle='--', color='black', alpha=0.3)
+            st.pyplot(fig)
+            
+            st.markdown('<h4>Feature Impact Analysis</h4>', unsafe_allow_html=True)
+            df_all = pd.DataFrame([
+                {
+                    'Feature': f.replace('_', ' ').title(),
+                    'Importance': i['importance'],
+                    'Weightage': i['weightage'],
+                    'Selected': 'Yes' if f in selected_features else 'No',
+                    'Impact': f"{i['weightage']:+.1f}%" if f in selected_features else "0.0%"
+                }
+                for f, i in PG_FEATURE_IMPORTANCE.items()
+            ])
+            st.dataframe(df_all, hide_index=True, use_container_width=True)
+    
+    # --- Additional Insights (unchanged from your version) ---
+    # Market Insights & Trends ...
+    # (rest of your code stays same)
+

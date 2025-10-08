@@ -450,6 +450,43 @@ def validate_property_details(data_dict: Dict[str, Any]) -> List[str]:
 
 # --- Streamlit UI ---
 st.title("Property Price Prediction App")
+PG_FEATURE_IMPORTANCE = {
+    "wifi": {"importance": 9, "weightage": 5.0, "category": "amenities"},
+    "food_included": {"importance": 8, "weightage": 4.0, "category": "amenities"},
+    "ac_room": {"importance": 7, "weightage": 3.5, "category": "room"},
+    "attached_bathroom": {"importance": 6, "weightage": 2.5, "category": "room"},
+    "laundry": {"importance": 5, "weightage": 2.0, "category": "services"},
+    "security": {"importance": 9, "weightage": 4.5, "category": "safety"},
+    "parking": {"importance": 6, "weightage": 2.0, "category": "facilities"},
+    "cctv": {"importance": 8, "weightage": 3.5, "category": "safety"},
+    "housekeeping": {"importance": 5, "weightage": 1.5, "category": "services"},
+}
+
+# --- Rule-based PG Price Calculation ---
+def calculate_pg_price_rule_based(pg_data):
+    """
+    Simple rule-based function to calculate PG rent price
+    based on selected features and their weightages.
+    """
+    base_price = 4000  # starting rent in ₹
+    sharing = pg_data.get("sharing", "double")
+
+    # Adjust base price by sharing type
+    if sharing == "private":
+        base_price += 3000
+    elif sharing == "double":
+        base_price += 1500
+    elif sharing == "triple":
+        base_price += 500
+    elif sharing == "quad":
+        base_price += 0
+
+    # Adjust by features weightage
+    for feature, selected in pg_data.items():
+        if feature in PG_FEATURE_IMPORTANCE and selected:
+            base_price += base_price * (PG_FEATURE_IMPORTANCE[feature]["weightage"] / 100)
+
+    return base_price
 
 # Create tabs
 tab1, tab2, tab3 = st.tabs(["Rental Price Prediction", "Commercial Price Prediction", "PG Price Prediction"])
@@ -948,51 +985,6 @@ with tab2:
                 st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
 
 
-# Tab 3: PG Accommodation Analysis
-# Tab 3: PG Accommodation Analysis
-with tab3:
-    # -----------------------------------
-# Tab 3: PG Accommodation Analysis
-# -----------------------------------
-
-# --- PG Feature Importance Dictionary ---
-PG_FEATURE_IMPORTANCE = {
-    "wifi": {"importance": 9, "weightage": 5.0, "category": "amenities"},
-    "food_included": {"importance": 8, "weightage": 4.0, "category": "amenities"},
-    "ac_room": {"importance": 7, "weightage": 3.5, "category": "room"},
-    "attached_bathroom": {"importance": 6, "weightage": 2.5, "category": "room"},
-    "laundry": {"importance": 5, "weightage": 2.0, "category": "services"},
-    "security": {"importance": 9, "weightage": 4.5, "category": "safety"},
-    "parking": {"importance": 6, "weightage": 2.0, "category": "facilities"},
-    "cctv": {"importance": 8, "weightage": 3.5, "category": "safety"},
-    "housekeeping": {"importance": 5, "weightage": 1.5, "category": "services"},
-}
-
-# --- Rule-based PG Price Calculation ---
-def calculate_pg_price_rule_based(pg_data):
-    """
-    Simple rule-based function to calculate PG rent price
-    based on selected features and their weightages.
-    """
-    base_price = 4000  # starting rent in ₹
-    sharing = pg_data.get("sharing", "double")
-
-    # Adjust base price by sharing type
-    if sharing == "private":
-        base_price += 3000
-    elif sharing == "double":
-        base_price += 1500
-    elif sharing == "triple":
-        base_price += 500
-    elif sharing == "quad":
-        base_price += 0
-
-    # Adjust by features weightage
-    for feature, selected in pg_data.items():
-        if feature in PG_FEATURE_IMPORTANCE and selected:
-            base_price += base_price * (PG_FEATURE_IMPORTANCE[feature]["weightage"] / 100)
-
-    return base_price
 
 
 with tab3:

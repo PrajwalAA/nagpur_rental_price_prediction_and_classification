@@ -903,7 +903,6 @@ with tab2:
                         st.session_state.commercial_avg_weightage = avg_weightage
                         st.session_state.commercial_user_data = user_data
                         st.session_state.commercial_processed_df = processed_df
-                        st.session_state.commercial_selected_floors = selected_floors
                         st.success("Prediction successful! See the results below.")
 
                     except Exception as e:

@@ -465,28 +465,30 @@ PG_FEATURE_IMPORTANCE = {
 # --- Rule-based PG Price Calculation ---
 def calculate_pg_price_rule_based(pg_data):
     """
-    Simple rule-based function to calculate PG rent price
-    based on selected features and their weightages.
+    Rule-based PG rent calculation using percentage adjustments
+    for sharing type and features.
     """
-    base_price = 4000  # starting rent in ₹
+    base_price = 2000  # starting rent in ₹
+
+    # --- Sharing type adjustments as percentages ---
+    SHARING_PERCENTAGE = {
+        "private": 100,   # +100% of base price
+        "double": 70,     # +50% of base price
+        "triple": 45,     # +20% of base price
+        "quad": 30         # no increase
+    }
+
     sharing = pg_data.get("sharing", "double")
+    base_price += base_price * (SHARING_PERCENTAGE.get(sharing, 0) / 100)
 
-    # Adjust base price by sharing type
-    if sharing == "private":
-        base_price += 3000
-    elif sharing == "double":
-        base_price += 1500
-    elif sharing == "triple":
-        base_price += 500
-    elif sharing == "quad":
-        base_price += 0
-
-    # Adjust by features weightage
+    # --- Features adjustments ---
     for feature, selected in pg_data.items():
         if feature in PG_FEATURE_IMPORTANCE and selected:
+            # Each feature adds its percentage of the current base price
             base_price += base_price * (PG_FEATURE_IMPORTANCE[feature]["weightage"] / 100)
 
     return base_price
+
 
 # Create tabs
 tab1, tab2, tab3 = st.tabs(["Rental Price Prediction", "Commercial Price Prediction", "PG Price Prediction"])

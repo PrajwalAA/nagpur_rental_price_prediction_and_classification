@@ -319,19 +319,19 @@ def preprocess_commercial_input(user_data, feature_names, scaler):
     
     df = df[feature_names]
     
-    numerical_cols = ['size_in_sqft', 'carpet_area_sqft', 'private_washroom',
-                     'public_washroom', 'total_floors', 'property_age',
-                     'expected rent increases yearly', 'fire_extinguishers',
-                     'food_court', 'cabin', 'lift', '0', 'water_storage', 'dg',
-                     'fire_safety', 'security', 'cctv', 'oxygen_duct', 'furnishing', 'vastu',
-                     'reception_area', 'internet', 'water_supply', 'fire_sensors',
-                     'power_backup', 'dg_and_ups', 'parking', 'pantry',
-                     'lock_in_period_in_months']
+    # Get the numerical columns that the scaler was trained on
+    numerical_cols = scaler.feature_names_in_
     
+    # Only scale columns that exist in both the dataframe and the scaler
     numerical_cols_present = [col for col in numerical_cols if col in df.columns]
     
     if numerical_cols_present:
-        df[numerical_cols_present] = scaler.transform(df[numerical_cols_present])
+        try:
+            df[numerical_cols_present] = scaler.transform(df[numerical_cols_present])
+        except Exception as e:
+            st.error(f"Error during scaling: {e}")
+            st.write("Columns being scaled:", numerical_cols_present)
+            return None
     
     return df
 
@@ -890,23 +890,24 @@ with tab2:
                 
                 processed_df = preprocess_commercial_input(user_data, feature_names, scaler)
                 
-                try:
-                    prediction_log = model.predict(processed_df)[0]
-                    base_prediction = np.expm1(prediction_log)
-                    
-                    # Calculate floor-adjusted rent
-                    adjusted_rent, avg_weightage = calculate_floor_adjusted_rent(base_prediction, floor_numbers)
-                    
-                    st.session_state.commercial_base_prediction = base_prediction
-                    st.session_state.commercial_adjusted_prediction = adjusted_rent
-                    st.session_state.commercial_avg_weightage = avg_weightage
-                    st.session_state.commercial_user_data = user_data
-                    st.session_state.commercial_processed_df = processed_df
-                    st.session_state.commercial_selected_floors = selected_floors
-                    st.success("Prediction successful! See the results below.")
+                if processed_df is not None:
+                    try:
+                        prediction_log = model.predict(processed_df)[0]
+                        base_prediction = np.expm1(prediction_log)
+                        
+                        # Calculate floor-adjusted rent
+                        adjusted_rent, avg_weightage = calculate_floor_adjusted_rent(base_prediction, floor_numbers)
+                        
+                        st.session_state.commercial_base_prediction = base_prediction
+                        st.session_state.commercial_adjusted_prediction = adjusted_rent
+                        st.session_state.commercial_avg_weightage = avg_weightage
+                        st.session_state.commercial_user_data = user_data
+                        st.session_state.commercial_processed_df = processed_df
+                        st.session_state.commercial_selected_floors = selected_floors
+                        st.success("Prediction successful! See the results below.")
 
-                except Exception as e:
-                    st.error(f"Error making prediction: {e}")
+                    except Exception as e:
+                        st.error(f"Error making prediction: {e}")
 
         # --- Prediction Results Section ---
         if 'commercial_base_prediction' in st.session_state:

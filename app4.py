@@ -792,89 +792,269 @@ with tab1:
 
 # Tab 2: Commercial Price Prediction
 # Tab 2: Commercial Price Prediction
-import re
-import streamlit as st
 
 with tab2:
-    st.markdown(
-        "<h3 style='text-align: center; color: #4CAF50;'>Commercial Property Details</h3>",
-        unsafe_allow_html=True
-    )
+    # Custom CSS for dark theme and compact layout
+    st.markdown("""
+    <style>
+        .stApp { background-color: #0E1117; color: white; }
+        html, body, .stMarkdown, h1, h2, h3, h4, h5, h6, p, span, div, label { color: white !important; }
+        .stSelectbox > div > div > div { color: white; }
+        .stNumberInput > div > div > input { color: white; }
+        .stMultiSelect > div > div > div { color: white; }
+        .element-container { margin-bottom: 0.5rem; }
+        .stForm { border: 0px; padding: 0rem; }
+        .streamlit-expanderHeader { background-color: #262730; border-radius: 5px; }
+        .stMultiSelect div[data-baseweb="select"] span { color: white; }
+        .price-container { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); padding: 20px; border-radius: 10px; margin: 10px 0; }
+        .price-label { font-size: 14px; opacity: 0.9; }
+        .price-value { font-size: 28px; font-weight: bold; }
+        .price-change { font-size: 16px; margin-top: 5px; }
+        .positive-change { color: #4ade80; }
+        .negative-change { color: #f87171; }
+    </style>
+    """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
+    st.markdown('<h1 style="text-align: center;">🏢 Commercial Property Rent Predictor</h1>', unsafe_allow_html=True)
 
-    # --- Column 1 ---
-    with col1:
-        commercial_type = st.selectbox(
-            "Commercial Type",
-            ['office', 'retail', 'warehouse', 'industrial', 'hospitality'],
-            index=0,
-            key='commercial_type'
-        )
+    # Load commercial model
+    model, scaler, feature_names = load_commercial_resources()
+    if model is None or scaler is None or feature_names is None:
+        st.error("Unable to load commercial model components. Please check your files.")
+    else:
+        # Floor weightage info
+        with st.expander("📊 Floor Premium Rates", expanded=False):
+            st.write("Rent adjustments based on floor selection:")
+            weightage_df = pd.DataFrame(list(FLOOR_WEIGHTAGE.items()), columns=['Floor', 'Premium (%)'])
+            weightage_df['Floor'] = weightage_df['Floor'].apply(lambda x: f"Floor {x}")
+            st.dataframe(weightage_df, hide_index=True, use_container_width=True)
 
-        furnishing = st.selectbox(
-            "Furnishing",
-            ['unfurnished', 'semi-furnished', 'furnished'],
-            index=0,
-            key='commercial_furnishing'
-        )
+        with st.form("commercial_prediction_form"):
+            # --- Input Grid ---
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                property_type = st.selectbox(
+                    "Property Type",
+                    ['showroom', 'shop', 'bare shell office', 'ready to use office',
+                     'commercial property', 'warehouse', 'godown'],
+                    index=0, key='commercial_property_type'
+                )
+                size_sqft = st.number_input("Size (sqft)", min_value=100, max_value=100000,
+                                            value=1000, step=50, key='commercial_size_sqft')
+                area = st.selectbox(
+                    "Area",
+                    ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna',
+                     'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth',
+                     'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar',
+                     'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar',
+                     'sakkardara', 'babulban', 'manish nagar', 'dhantoli', 'khamla',
+                     'laxminagar', 'ajni', 'wathoda', 'hulkeshwar', 'pardi', 'new indora',
+                     'civil lines', 'gadhibag', 'bagadganj', 'swawlambi nagar', 'manawada',
+                     'trimurti nagar', 'lakadganj', 'shivaji nagar'],
+                    index=0, key='commercial_area'
+                )
+            with col2:
+                carpet_area = st.number_input("Carpet Area (sqft)", min_value=100, max_value=100000,
+                                              value=800, step=50, key='commercial_carpet_area')
+                zone = st.selectbox("Zone", ['south', 'west', 'east', 'north'], index=0, key='commercial_zone')
+                location_hub = st.selectbox(
+                    "Location Hub",
+                    ['commercial project', 'others', 'retail complex/building',
+                     'market/high street', 'business park', 'it park', 'residential'],
+                    index=0, key='commercial_location_hub'
+                )
+            with col3:
+                ownership = st.selectbox(
+                    "Ownership",
+                    ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'],
+                    index=0, key='commercial_ownership'
+                )
 
-    # --- Column 2 ---
-    with col2:
-        property_age = st.selectbox(
-            "Property Age",
-            ['0-1 years', '1-5 years', '5-10 years', '10+ years'],
-            index=0,
-            key='commercial_property_age'
-        )
+                # --- Total Floors ---
+                total_floors = st.selectbox(
+                    "Total Floors",
+                    ['1 floor', '2 floors', '3 floors', '4 floors', '5 floors',
+                     '6 floors', '7 floors', '8 floors', '9 floors', '10 floors', '15 floors'],
+                    index=0, key='commercial_total_floors'
+                )
 
-        washrooms = st.number_input(
-            "Number of Washrooms",
-            min_value=0,
-            max_value=20,
-            value=1,
-            step=1,
-            key='commercial_washrooms'
-        )
+                # Extract numeric value from total_floors
+                max_floors_allowed = int(re.sub(r'\D', '', total_floors))
 
-    # --- Column 3 ---
-    with col3:
-        ownership = st.selectbox(
-            "Ownership",
-            ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'],
-            index=0,
-            key='commercial_ownership'
-        )
+                # Dynamic floor options (always include Floor 0)
+                floor_options = [f"Floor {i}" for i in range(0, max_floors_allowed + 1)]
 
-        # --- Total Floors ---
-        total_floors = st.selectbox(
-            "Total Floors",
-            ['1 floor', '2 floors', '3 floors', '4 floors', '5 floors',
-             '6 floors', '7 floors', '8 floors', '9 floors', '10 floors', '15 floors'],
-            index=0,
-            key='commercial_total_floors'
-        )
+                # Default = all available floors
+                default_floors = floor_options
 
-        # Extract numeric value (e.g., "5 floors" -> 5)
-        max_floors_allowed = int(re.sub(r'\D', '', total_floors))
+                selected_floors = st.multiselect(
+                    "Select Available Floors",
+                    floor_options,
+                    default=default_floors,
+                    key='commercial_selected_floors'
+                )
 
-        # Create valid floor options dynamically
-        floor_options = [f"Floor {i}" for i in range(0, max_floors_allowed + 1)]
+                # Validation
+                if any(f not in floor_options for f in selected_floors):
+                    st.warning("Invalid floor selection. Resetting to default (all available floors).")
+                    st.session_state['commercial_selected_floors'] = default_floors
 
-        # Default selection = All available floors
-        default_floors = floor_options  
+            # --- More inputs ---
+            col_a, col_b, col_c = st.columns(3)
+            with col_a:
+                private_washroom = st.number_input("Private Washrooms", min_value=0, max_value=20,
+                                                   value=1, key='commercial_private_washroom')
+            with col_b:
+                public_washroom = st.number_input("Public Washrooms", min_value=0, max_value=20,
+                                                  value=1, key='commercial_public_washroom')
+            with col_c:
+                property_age = st.number_input("Property Age (years)", min_value=0, max_value=100,
+                                               value=5, key='commercial_property_age')
 
-        selected_floors = st.multiselect(
-            "Select Available Floors",
-            floor_options,
-            default=default_floors,
-            key='commercial_selected_floors'
-        )
+            # --- Amenities & Other Details ---
+            with st.expander("Amenities & Charges"):
+                amenities_options = [
+                    'parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups',
+                    'water storage', 'staircase', 'security', 'cctv', 'power backup',
+                    'reception area', 'pantry', 'fire extinguishers', 'fire safety',
+                    'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors'
+                ]
+                selected_amenities = st.multiselect("Select Amenities", amenities_options,
+                                                    key='commercial_selected_amenities')
+                electric_charge = st.selectbox("Electric Charge Included", ['yes', 'no'], index=0,
+                                               key='commercial_electric_charge')
+                water_charge = st.selectbox("Water Charge Included", ['yes', 'no'], index=0,
+                                            key='commercial_water_charge')
 
-        # Validate selections
-        if any(f not in floor_options for f in selected_floors):
-            st.warning("Invalid floor selection detected. Resetting to default (all available floors).")
-            st.session_state['commercial_selected_floors'] = default_floors
+            with st.expander("Other Details"):
+                possession_status = st.selectbox("Possession Status",
+                                                 ['ready to move', 'Under Construction'],
+                                                 index=0, key='commercial_possession_status')
+                posted_by = st.selectbox("Posted By", ['owner', 'housing expert', 'broker'],
+                                         index=0, key='commercial_posted_by')
+                lock_in_period_str = st.selectbox(
+                    "Lock-in Period",
+                    ['2 months', '6 months', '12 months', '3 months', '1 month', '11 months',
+                     '4 months', '10 months', '36 months'],
+                    index=0, key='commercial_lock_in_period'
+                )
+                expected_rent_increase_str = st.selectbox("Yearly Rent Increase", ['0.05', '0.10'],
+                                                          index=0, key='commercial_expected_rent_increase')
+                negotiable = st.selectbox("Negotiable", ['yes', 'no'], index=0, key='commercial_negotiable')
+                brokerage = st.selectbox("Brokerage", ['yes', 'no'], index=0, key='commercial_brokerage')
+
+            # --- Submit ---
+            predict_button = st.form_submit_button("Predict Rent Price", use_container_width=True)
+
+            if predict_button:
+                # --- Validation ---
+                errors = []
+                if carpet_area > size_sqft:
+                    errors.append("❌ Carpet area cannot exceed total size.")
+                if property_type == "showroom" and carpet_area < 500:
+                    errors.append("❌ Showroom must have at least 500 sqft carpet area.")
+                elif property_type in ["ready to use office", "bare shell office"] and carpet_area < 250:
+                    errors.append("❌ Office must have at least 250 sqft carpet area.")
+
+                if errors:
+                    for e in errors:
+                        st.error(e)
+                    st.stop()
+
+                # --- Process Inputs ---
+                floor_numbers = [floor.replace("Floor ", "") for floor in selected_floors]
+                floor_no_str = ",".join(sorted(floor_numbers))
+                lock_in_period = int(re.sub(r'\D', '', lock_in_period_str))
+                expected_rent_increase = float(expected_rent_increase_str)
+
+                user_data = {
+                    'listing litle': property_type, 'city': 'nagpur', 'area': area, 'zone': zone,
+                    'location_hub': location_hub, 'property_type': property_type, 'ownership': ownership,
+                    'size_in_sqft': size_sqft, 'carpet_area_sqft': carpet_area,
+                    'private_washroom': private_washroom, 'public_washroom': public_washroom,
+                    'floor_no': floor_no_str, 'total_floors': total_floors,
+                    'amenities_count': ', '.join(selected_amenities),
+                    'electric_charge_included': electric_charge, 'water_charge_included': water_charge,
+                    'property_age': property_age, 'possession_status': possession_status,
+                    'posted_by': posted_by, 'lock in period': f"{lock_in_period} months",
+                    'expected rent increases yearly': expected_rent_increase,
+                    'negotiable': negotiable, 'brokerage': brokerage
+                }
+
+                processed_df = preprocess_commercial_input(user_data, feature_names, scaler)
+
+                if processed_df is not None:
+                    try:
+                        prediction_log = model.predict(processed_df)[0]
+                        base_prediction = np.expm1(prediction_log)
+                        adjusted_rent, avg_weightage = calculate_floor_adjusted_rent(base_prediction, floor_numbers)
+
+                        # Save predictions
+                        st.session_state.commercial_base_prediction = base_prediction
+                        st.session_state.commercial_adjusted_prediction = adjusted_rent
+                        st.session_state.commercial_avg_weightage = avg_weightage
+                        st.session_state.commercial_user_data = user_data
+                        st.session_state.commercial_processed_df = processed_df
+
+                        st.success("Prediction successful! See the results below.")
+
+                    except Exception as e:
+                        st.error(f"Error making prediction: {e}")
+
+        # --- Results ---
+        if 'commercial_base_prediction' in st.session_state:
+            st.markdown("---")
+            st.markdown('<h2>Prediction Results</h2>', unsafe_allow_html=True)
+
+            base_prediction = st.session_state.commercial_base_prediction
+            adjusted_prediction = st.session_state.commercial_adjusted_prediction
+            avg_weightage = st.session_state.commercial_avg_weightage
+            user_data = st.session_state.commercial_user_data
+            selected_floors = user_data['floor_no'].split(',')
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown('<div class="price-container">', unsafe_allow_html=True)
+                st.markdown('<div class="price-label">Base Rent Price (Ground Floor)</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="price-value">₹{base_prediction:.2f}</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                st.markdown('<div class="price-container" style="background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);">', unsafe_allow_html=True)
+                st.markdown('<div class="price-label">Estimated Rent Price (Floor Adjusted)</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="price-value">₹{adjusted_prediction:.2f}</div>', unsafe_allow_html=True)
+                if avg_weightage > 0:
+                    st.markdown(f'<div class="price-change positive-change">+{avg_weightage:.1f}% Floor Premium</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="price-change">No Floor Premium</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+
+                st.markdown('<h4>Property Summary</h4>', unsafe_allow_html=True)
+                st.write(f"**Property Type:** {user_data['property_type'].title()}")
+                st.write(f"**Size:** {user_data['size_in_sqft']} sqft")
+                st.write(f"**Area:** {user_data['area'].title()}")
+                st.write(f"**Floors:** {', '.join([f'Floor {f}' for f in selected_floors])}")
+
+            with col2:
+                st.markdown('<h4>Price Comparison</h4>', unsafe_allow_html=True)
+                lower_bound = adjusted_prediction * 0.85
+                upper_bound = adjusted_prediction * 1.15
+                comparison_price = st.number_input("Enter Listed Price", min_value=0.0,
+                                                   value=float(adjusted_prediction), step=1000.0,
+                                                   key='commercial_comparison_price')
+                if comparison_price < lower_bound:
+                    st.warning("Listed price is **BELOW** fair range.")
+                elif comparison_price > upper_bound:
+                    st.warning("Listed price is **ABOVE** fair range.")
+                else:
+                    st.success("Listed price is **FAIR**.")
+
+                st.markdown('<h4>Future Projection</h4>', unsafe_allow_html=True)
+                years = st.slider("Years", min_value=1, max_value=10, value=5, key='commercial_years')
+                growth_rate = st.slider("Growth (%)", min_value=0.0, max_value=15.0, value=5.0,
+                                        step=0.5, key='commercial_growth_rate')
+                projected_price = adjusted_prediction * ((1 + growth_rate/100) ** years)
+                st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
+
 
 with tab3:
     # --- Header Styling ---

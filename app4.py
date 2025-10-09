@@ -837,17 +837,44 @@ with tab2:
                                               'commercial property', 'warehouse', 'godown'], 
                                              index=0, key='commercial_property_type')
                 size_sqft = st.number_input("Size (sqft)", min_value=100, max_value=100000, value=1000, step=50, key='commercial_size_sqft')
-                area = st.selectbox("Area", ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 'sitabuldi', 'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 'dharampeth', 'gandhibag', 'chatrapati nagar', 'nandanwan', 'sadar', 'dighori', 'somalwada', 'ganeshpeth colony', 'mhalgi nagar', 'sakkardara', 'babulban', 'manish nagar', 'dhantoli', 'khamla', 'laxminagar', 'ajni', 'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 'gadhibag', 'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 'lakadganj', 'shivaji nagar'], index=0, key='commercial_area')
+                area = st.selectbox("Area", 
+                                    ['manewada', 'jaitala', 'besa', 'omkar nagar', 'itwari', 'hingna', 'sitabuldi', 
+                                     'mahal', 'kharbi', 'mihan', 'pratap nagar', 'ramdaspeth', 'dharampeth', 'gandhibag', 
+                                     'chatrapati nagar', 'nandanwan', 'sadar', 'dighori', 'somalwada', 'ganeshpeth colony', 
+                                     'mhalgi nagar', 'sakkardara', 'babulban', 'manish nagar', 'dhantoli', 'khamla', 
+                                     'laxminagar', 'ajni', 'wathoda', 'hulkeshwar', 'pardi', 'new indora', 'civil lines', 
+                                     'gadhibag', 'bagadganj', 'swawlambi nagar', 'manawada', 'trimurti nagar', 
+                                     'lakadganj', 'shivaji nagar'], 
+                                    index=0, key='commercial_area')
             with col2:
                 carpet_area = st.number_input("Carpet Area (sqft)", min_value=100, max_value=100000, value=800, step=50, key='commercial_carpet_area')
                 zone = st.selectbox("Zone", ['south', 'west', 'east', 'north'], index=0, key='commercial_zone')
-                location_hub = st.selectbox("Location Hub", ['commercial project', 'others', 'retail complex/building', 'market/high street', 'business park', 'it park', 'residential'], index=0, key='commercial_location_hub')
+                location_hub = st.selectbox("Location Hub", 
+                                            ['commercial project', 'others', 'retail complex/building', 'market/high street', 
+                                             'business park', 'it park', 'residential'], 
+                                            index=0, key='commercial_location_hub')
             with col3:
-                ownership = st.selectbox("Ownership", ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], index=0, key='commercial_ownership')
-                total_floors = st.selectbox("Total Floors", ['3 floors', '1 floor', '2 floors', '4 floors', '5 floors', '8 floors', '7 floors', '6 floors', '15 floors', '9 floors', '10 floors'], index=0, key='commercial_total_floors')
-                floor_options = [f"Floor {i}" for i in range(0, 11)]
-                selected_floors = st.multiselect("Select Available Floors", floor_options, default=["Floor 0"], key='commercial_selected_floors')
+                ownership = st.selectbox("Ownership", 
+                                         ['freehold', 'leasehold', 'cooperative society', 'power_of_attorney'], 
+                                         index=0, key='commercial_ownership')
+                total_floors = st.selectbox("Total Floors", 
+                                            ['1 floor', '2 floors', '3 floors', '4 floors', '5 floors', 
+                                             '6 floors', '7 floors', '8 floors', '9 floors', '10 floors', '15 floors'], 
+                                            index=0, key='commercial_total_floors')
 
+                # Extract number of floors
+                max_floors_allowed = int(re.sub(r'\D', '', total_floors))
+
+                # Create valid floor options
+                floor_options = [f"Floor {i}" for i in range(0, max_floors_allowed + 1)]
+                default_floor = ["Floor 0"] if "Floor 0" in floor_options else [floor_options[0]]
+
+                selected_floors = st.multiselect("Select Available Floors", 
+                                                 floor_options, 
+                                                 default=default_floor, 
+                                                 key='commercial_selected_floors')
+
+            # Washrooms & Age
             col_a, col_b, col_c = st.columns(3)
             with col_a:
                 private_washroom = st.number_input("Private Washrooms", min_value=0, max_value=20, value=1, key='commercial_private_washroom')
@@ -858,7 +885,10 @@ with tab2:
 
             # --- Amenities & Other Details ---
             with st.expander("Amenities & Charges"):
-                amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 'water storage', 'staircase', 'security', 'cctv', 'power backup', 'reception area', 'pantry', 'fire extinguishers', 'fire safety', 'oxygen duct', 'food court', 'furnishing', 'internet', 'fire sensors']
+                amenities_options = ['parking', 'vastu', 'lift', 'cabin', 'meeting room', 'dg and ups', 'water storage', 
+                                     'staircase', 'security', 'cctv', 'power backup', 'reception area', 'pantry', 
+                                     'fire extinguishers', 'fire safety', 'oxygen duct', 'food court', 'furnishing', 
+                                     'internet', 'fire sensors']
                 selected_amenities = st.multiselect("Select Amenities", amenities_options, key='commercial_selected_amenities')
                 electric_charge = st.selectbox("Electric Charge Included", ['yes', 'no'], index=0, key='commercial_electric_charge')
                 water_charge = st.selectbox("Water Charge Included", ['yes', 'no'], index=0, key='commercial_water_charge')
@@ -866,7 +896,10 @@ with tab2:
             with st.expander("Other Details"):
                 possession_status = st.selectbox("Possession Status", ['ready to move', 'Under Construction'], index=0, key='commercial_possession_status')
                 posted_by = st.selectbox("Posted By", ['owner', 'housing expert', 'broker'], index=0, key='commercial_posted_by')
-                lock_in_period_str = st.selectbox("Lock-in Period", ['2 months', '6 months', '12 months', '3 months', '1 month', '11 months', '4 months', '10 months', '6  months', '8  months', '4  months', '36 months'], index=0, key='commercial_lock_in_period')
+                lock_in_period_str = st.selectbox("Lock-in Period", 
+                                                  ['1 month', '2 months', '3 months', '4 months', '6 months', '8 months', 
+                                                   '10 months', '11 months', '12 months', '36 months'], 
+                                                  index=0, key='commercial_lock_in_period')
                 expected_rent_increase_str = st.selectbox("Yearly Rent Increase", ['0.05', '0.10'], index=0, key='commercial_expected_rent_increase')
                 negotiable = st.selectbox("Negotiable", ['yes', 'no'], index=0, key='commercial_negotiable')
                 brokerage = st.selectbox("Brokerage", ['yes', 'no'], index=0, key='commercial_brokerage')
@@ -883,9 +916,6 @@ with tab2:
                     errors.append("❌ Showroom must have at least 500 sqft carpet area.")
                 elif property_type in ["ready to use office", "bare shell office"] and carpet_area < 250:
                     errors.append("❌ Office must have at least 250 sqft carpet area.")
-                max_floors_allowed = int(total_floors.split()[0])
-                if len(selected_floors) > max_floors_allowed:
-                    errors.append(f"❌ You cannot select more than {max_floors_allowed} floors.")
 
                 if errors:
                     for e in errors:
@@ -985,8 +1015,6 @@ with tab2:
                 growth_rate = st.slider("Growth (%)", min_value=0.0, max_value=15.0, value=5.0, step=0.5, key='commercial_growth_rate')
                 projected_price = adjusted_prediction * ((1 + growth_rate/100) ** years)
                 st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
-
-
 
 
 with tab3:

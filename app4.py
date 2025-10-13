@@ -1054,7 +1054,35 @@ with tab2:
                                         step=0.5, key='commercial_growth_rate')
                 projected_price = adjusted_prediction * ((1 + growth_rate/100) ** years)
                 st.write(f"**Rent in {years} years:** ₹{projected_price:.2f}")
-
+                # --- Future Rent Projection Graph ---
+                st.markdown("---")
+                st.subheader(f"{years}-Year Rent Projection (Adjusted Rent + {growth_rate:.1f}% annual growth)")
+                
+                # Generate projection for each year
+                projection_prices = []
+                current_price = adjusted_prediction
+                year_labels = list(range(1, years + 1))
+                for y in year_labels:
+                    current_price *= (1 + growth_rate / 100.0)
+                    projection_prices.append(current_price)
+                
+                # Display textual yearly projections
+                projection_texts = [f"Year {i+1}: ₹{projection_prices[i]:,.2f}" for i in range(len(projection_prices))]
+                st.markdown("\n".join(projection_texts))
+                
+                # Plot the projection graph
+                fig = plt.figure(figsize=(8, 4))
+                plt.plot(year_labels, projection_prices, marker='o', linestyle='-', color='deepskyblue')
+                plt.title(f'{years}-Year Projected Commercial Rent')
+                plt.xlabel('Year')
+                plt.ylabel('Projected Rent (₹)')
+                plt.xticks(year_labels)
+                plt.grid(True, linestyle='--', alpha=0.5)
+                plt.tight_layout()
+                st.pyplot(fig)
+                plt.close(fig)
+                
+                
 
 with tab3:
     # --- Header Styling ---
